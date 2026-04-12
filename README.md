@@ -24,7 +24,7 @@ A Python tool that parses Age of Empires 2: Definitive Edition replay files (`.a
 
 ```bash
 # Clone the repository
-git clone https://github.com/PaulSena/aoe2.git
+git clone https://github.com/PaulSena/Mayor-Menino-AoE2-Training-Report.git
 cd aoe2-replay-analyzer
 
 # Create virtual environment (recommended)

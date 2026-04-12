@@ -320,6 +320,50 @@ body {
 .color-5 { background: #d946ef; }  /* Purple */
 .color-6 { background: #6b7280; }  /* Grey */
 .color-7 { background: #f97316; }  /* Orange */
+
+/* Collapsible sections */
+.section {
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--bg-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.section-header:hover { background: var(--bg-hover); }
+
+.section-header h2 {
+  font-size: 1rem;
+  color: var(--accent);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-toggle {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  transition: transform 0.2s;
+}
+
+.section.collapsed .section-toggle { transform: rotate(-90deg); }
+.section.collapsed .section-content { display: none; }
+
+.section-content {
+  padding: 1rem;
+  background: var(--bg-primary);
+}
 </style>
 </head>
 <body>
@@ -379,6 +423,13 @@ function formatTime(s) {
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60);
   return `${m}:${sec.toString().padStart(2, '0')}`;
+}
+
+function toggleSection(sectionId) {
+  const section = document.getElementById(sectionId);
+  if (section) {
+    section.classList.toggle('collapsed');
+  }
 }
 
 // --- State ---
@@ -496,6 +547,7 @@ function renderSingleGame(idx, skipFilterRebuild) {
     <div class="info-item"><span>Duration</span><span>${meta.duration_minutes} min</span></div>
     <div class="info-item"><span>Speed</span><span>${meta.speed?.toFixed(2) || '1.50'}</span></div>
     <div class="info-item"><span>Date</span><span>${dateDisplay}</span></div>
+    <div class="info-item"><span>AI Difficulty</span><span>${meta.difficulty_name || 'Unknown'}</span></div>
     <div class="info-item"><span>Pop Limit</span><span>${meta.population_limit || 200}</span></div>
   </div>`;
 
@@ -795,13 +847,29 @@ function renderTrends() {
     return;
   }
 
+  // Compute date range from game data
+  const gameDates = GAME_DATA.map(g => g.metadata.game_date).filter(d => d).sort();
+  const firstDate = gameDates.length ? gameDates[0] : null;
+  const lastDate = gameDates.length ? gameDates[gameDates.length - 1] : null;
+  const formatDateRange = (d) => {
+    if (!d) return '';
+    const parts = d.split('.');
+    if (parts.length === 3) return `${parseInt(parts[1])}/${parseInt(parts[2])}`;
+    return d;
+  };
+  const dateRangeStr = firstDate && lastDate ? `${formatDateRange(firstDate)} - ${formatDateRange(lastDate)}` : '';
+
   // Summary cards
   let html = '<div class="summary-cards">';
-  html += `<div class="summary-card"><div class="label">Games Analyzed</div><div class="value">${GAME_DATA.length}</div></div>`;
+  html += `<div class="summary-card"><div class="label">Games Analyzed</div><div class="value">${GAME_DATA.length}</div>${dateRangeStr ? `<div class="detail">${dateRangeStr}</div>` : ''}</div>`;
   players.forEach(name => {
     const t = TREND_DATA[name];
     const feudals = t.feudal_times.filter(x => x != null);
+    const castles = t.castle_times.filter(x => x != null);
+    const imperials = t.imperial_times.filter(x => x != null);
     const bestFeudal = feudals.length ? Math.min(...feudals) : null;
+    const bestCastle = castles.length ? Math.min(...castles) : null;
+    const bestImperial = imperials.length ? Math.min(...imperials) : null;
     const avgAPM = t.apm.length ? (t.apm.reduce((a,b) => a+b, 0) / t.apm.length).toFixed(0) : 'N/A';
     const wins = t.wins ? t.wins.filter(w => w === true).length : 0;
     const losses = t.wins ? t.wins.filter(w => w === false).length : 0;
@@ -812,38 +880,185 @@ function renderTrends() {
       <div class="value">${t.games.length} games</div>
       <div class="detail">Win Rate: <span style="color:${wins > losses ? 'var(--green)' : wins < losses ? 'var(--red)' : 'var(--text-secondary)'}">${winRate}</span> (${wins}W ${losses}L)</div>
       <div class="detail">Best Feudal: ${formatTime(bestFeudal)}</div>
+      <div class="detail">Best Castle: ${formatTime(bestCastle)}</div>
+      <div class="detail">Best Imperial: ${formatTime(bestImperial)}</div>
       <div class="detail">Avg APM: ${avgAPM}</div>
     </div>`;
   });
   html += '</div>';
 
-  // Charts — isTime is explicit per config, not derived from key name
-  const chartConfigs = [
-    { id: 'feudal-trend', title: 'Feudal Age Times', key: 'feudal_times', isTime: true, lower_is_better: true },
-    { id: 'castle-trend', title: 'Castle Age Times', key: 'castle_times', isTime: true, lower_is_better: true },
-    { id: 'imperial-trend', title: 'Imperial Age Times', key: 'imperial_times', isTime: true, lower_is_better: true },
-    { id: 'vil15-trend', title: 'Villagers at 15 min', key: 'villagers_at_15min', isTime: false, lower_is_better: false },
-    { id: 'vil30-trend', title: 'Villagers at 30 min', key: 'villagers_at_30min', isTime: false, lower_is_better: false },
-    { id: 'vil-castle-trend', title: 'Villagers at Castle Age', key: 'villagers_at_castle', isTime: false, lower_is_better: false },
-    { id: 'apm-trend', title: 'APM Over Games', key: 'apm', isTime: false, lower_is_better: false },
-    { id: 'total-vil-trend', title: 'Total Villagers Produced', key: 'total_villagers', isTime: false, lower_is_better: false },
-    { id: 'idle-tc-trend', title: 'Idle TC (first 20min)', key: 'idle_tc_early', isTime: true, lower_is_better: true },
-    { id: 'loom-trend', title: 'Loom Time', key: 'loom_time', isTime: true, lower_is_better: true },
-    { id: 'wheelbarrow-trend', title: 'Wheelbarrow Time', key: 'wheelbarrow_time', isTime: true, lower_is_better: true },
-    { id: 'first-mil-trend', title: 'First Military Unit Time', key: 'first_military', isTime: true, lower_is_better: true },
-    { id: 'total-mil-trend', title: 'Total Military Produced', key: 'total_military', isTime: false, lower_is_better: false },
-    { id: 'final-res-trend', title: 'Final Resources', key: 'final_resources', isTime: false, lower_is_better: false },
-    { id: 'peak-res-trend', title: 'Peak Resources', key: 'peak_resources', isTime: false, lower_is_better: false },
-    { id: 'final-obj-trend', title: 'Final Units + Buildings', key: 'final_objects', isTime: false, lower_is_better: false },
-    { id: 'peak-obj-trend', title: 'Peak Units + Buildings', key: 'peak_objects', isTime: false, lower_is_better: false },
-    { id: 'duration-trend', title: 'Game Duration (min)', key: 'game_durations', isTime: false, lower_is_better: false },
+  // --- Play Schedule Section ---
+  html += `<div class="section" id="section-schedule">
+    <div class="section-header" onclick="toggleSection('section-schedule')">
+      <h2>Play Schedule</h2>
+      <span class="section-toggle">▼</span>
+    </div>
+    <div class="section-content">
+      <div class="card"><div class="chart-container"><canvas id="play-schedule-chart"></canvas></div></div>
+    </div>
+  </div>`;
+
+  // --- Civ Usage Section ---
+  html += `<div class="section" id="section-civ-usage">
+    <div class="section-header" onclick="toggleSection('section-civ-usage')">
+      <h2>Civilization Usage</h2>
+      <span class="section-toggle">▼</span>
+    </div>
+    <div class="section-content">
+      <div class="grid grid-2">`;
+  players.forEach((name, pi) => {
+    html += `<div class="card"><h3>${name}</h3><div class="chart-container"><canvas id="civ-usage-${pi}"></canvas></div></div>`;
+  });
+  html += `</div>
+    </div>
+  </div>`;
+
+  // --- Win Rate by Civ Section (collapsed by default) ---
+  html += `<div class="section collapsed" id="section-civ-winrate">
+    <div class="section-header" onclick="toggleSection('section-civ-winrate')">
+      <h2>Win Rate by Civilization</h2>
+      <span class="section-toggle">▼</span>
+    </div>
+    <div class="section-content">
+      <div class="grid grid-2">`;
+  players.forEach((name, pi) => {
+    html += `<div class="card"><h3>${name}</h3><div class="chart-container"><canvas id="civ-winrate-${pi}"></canvas></div></div>`;
+  });
+  html += `</div>
+    </div>
+  </div>`;
+
+  // --- Age-Up Time Consistency Section ---
+  html += `<div class="section" id="section-consistency">
+    <div class="section-header" onclick="toggleSection('section-consistency')">
+      <h2>Age-Up Time Consistency</h2>
+      <span class="section-toggle">▼</span>
+    </div>
+    <div class="section-content">
+      <div class="grid grid-2">`;
+  players.forEach((name, pi) => {
+    const t = TREND_DATA[name];
+    const feudals = t.feudal_times.filter(x => x != null);
+    const castles = t.castle_times.filter(x => x != null);
+
+    // Calculate standard deviation
+    const stdDev = (arr) => {
+      if (arr.length < 2) return null;
+      const mean = arr.reduce((a,b) => a+b, 0) / arr.length;
+      const variance = arr.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / arr.length;
+      return Math.sqrt(variance);
+    };
+
+    const feudalStd = stdDev(feudals);
+    const castleStd = stdDev(castles);
+    const feudalAvg = feudals.length ? feudals.reduce((a,b) => a+b, 0) / feudals.length : null;
+    const castleAvg = castles.length ? castles.reduce((a,b) => a+b, 0) / castles.length : null;
+
+    // Consistency rating based on std dev (lower = more consistent)
+    const getConsistencyRating = (std) => {
+      if (std === null) return { label: 'N/A', color: 'var(--text-muted)' };
+      if (std < 30) return { label: 'Very Consistent', color: 'var(--green)' };
+      if (std < 60) return { label: 'Consistent', color: '#84cc16' };
+      if (std < 90) return { label: 'Moderate', color: 'var(--yellow)' };
+      if (std < 120) return { label: 'Variable', color: 'var(--orange)' };
+      return { label: 'Inconsistent', color: 'var(--red)' };
+    };
+
+    const feudalRating = getConsistencyRating(feudalStd);
+    const castleRating = getConsistencyRating(castleStd);
+
+    html += `<div class="card">
+      <h3>${name}</h3>
+      <div class="stat-row">
+        <span class="stat-label">Feudal Age Time</span>
+        <span class="stat-value">
+          <span style="color:${feudalRating.color}">${feudalRating.label}</span>
+          ${feudalStd !== null ? `<span style="color:var(--text-muted);font-size:0.75rem;margin-left:0.5rem">(avg ${formatTime(feudalAvg)} \u00b1${formatTime(feudalStd)})</span>` : ''}
+        </span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Castle Age Time</span>
+        <span class="stat-value">
+          <span style="color:${castleRating.color}">${castleRating.label}</span>
+          ${castleStd !== null ? `<span style="color:var(--text-muted);font-size:0.75rem;margin-left:0.5rem">(avg ${formatTime(castleAvg)} \u00b1${formatTime(castleStd)})</span>` : ''}
+        </span>
+      </div>
+      <div style="margin-top:0.5rem;color:var(--text-muted);font-size:0.75rem">Standard deviation of age-up times. Lower = more consistent execution across games.</div>
+    </div>`;
+  });
+  html += `</div>
+    </div>
+  </div>`;
+
+  // Charts grouped by category
+  const chartGroups = [
+    {
+      id: 'section-age-times',
+      title: 'Age-Up Times Over Games',
+      charts: [
+        { id: 'feudal-trend', title: 'Feudal Age Times', key: 'feudal_times', isTime: true, lower_is_better: true },
+        { id: 'castle-trend', title: 'Castle Age Times', key: 'castle_times', isTime: true, lower_is_better: true },
+        { id: 'imperial-trend', title: 'Imperial Age Times', key: 'imperial_times', isTime: true, lower_is_better: true },
+      ]
+    },
+    {
+      id: 'section-economy',
+      title: 'Economy Trends',
+      charts: [
+        { id: 'vil15-trend', title: 'Villagers at 15 min', key: 'villagers_at_15min', isTime: false, lower_is_better: false },
+        { id: 'vil30-trend', title: 'Villagers at 30 min', key: 'villagers_at_30min', isTime: false, lower_is_better: false },
+        { id: 'vil-castle-trend', title: 'Villagers at Castle Age', key: 'villagers_at_castle', isTime: false, lower_is_better: false },
+        { id: 'total-vil-trend', title: 'Total Villagers Produced', key: 'total_villagers', isTime: false, lower_is_better: false },
+        { id: 'idle-tc-trend', title: 'Idle TC (first 20min)', key: 'idle_tc_early', isTime: true, lower_is_better: true },
+      ]
+    },
+    {
+      id: 'section-military',
+      title: 'Military Trends',
+      charts: [
+        { id: 'first-mil-trend', title: 'First Military Unit Time', key: 'first_military', isTime: true, lower_is_better: true },
+        { id: 'total-mil-trend', title: 'Total Military Produced', key: 'total_military', isTime: false, lower_is_better: false },
+      ]
+    },
+    {
+      id: 'section-resources',
+      title: 'Resources & Units',
+      charts: [
+        { id: 'final-res-trend', title: 'Final Resources', key: 'final_resources', isTime: false, lower_is_better: false },
+        { id: 'peak-res-trend', title: 'Peak Resources', key: 'peak_resources', isTime: false, lower_is_better: false },
+        { id: 'final-obj-trend', title: 'Final Units + Buildings', key: 'final_objects', isTime: false, lower_is_better: false },
+        { id: 'peak-obj-trend', title: 'Peak Units + Buildings', key: 'peak_objects', isTime: false, lower_is_better: false },
+      ]
+    },
+    {
+      id: 'section-game-stats',
+      title: 'Game Stats',
+      charts: [
+        { id: 'apm-trend', title: 'APM Over Games', key: 'apm', isTime: false, lower_is_better: false },
+        { id: 'duration-trend', title: 'Game Duration (min)', key: 'game_durations', isTime: false, lower_is_better: false },
+      ]
+    },
   ];
 
-  html += '<div class="grid grid-2">';
-  chartConfigs.forEach(cfg => {
-    html += `<div class="card"><h3>${cfg.title}</h3><div class="chart-container"><canvas id="${cfg.id}"></canvas></div></div>`;
+  // Flatten for chart rendering later
+  const chartConfigs = chartGroups.flatMap(g => g.charts);
+
+  // Render grouped sections
+  chartGroups.forEach(group => {
+    html += `<div class="section" id="${group.id}">
+      <div class="section-header" onclick="toggleSection('${group.id}')">
+        <h2>${group.title}</h2>
+        <span class="section-toggle">▼</span>
+      </div>
+      <div class="section-content">
+        <div class="grid grid-2">`;
+    group.charts.forEach(cfg => {
+      html += `<div class="card"><h3>${cfg.title}</h3><div class="chart-container"><canvas id="${cfg.id}"></canvas></div></div>`;
+    });
+    html += `</div>
+      </div>
+    </div>`;
   });
-  html += '</div>';
 
   container.innerHTML = html;
 
@@ -936,6 +1151,162 @@ function renderTrends() {
       }
     });
     activeCharts.push(chart);
+  });
+
+  // --- Render Play Schedule Chart ---
+  const scheduleCanvas = document.getElementById('play-schedule-chart');
+  if (scheduleCanvas) {
+    // Count games per date
+    const gamesPerDate = {};
+    GAME_DATA.forEach(g => {
+      const d = g.metadata.game_date;
+      if (d) gamesPerDate[d] = (gamesPerDate[d] || 0) + 1;
+    });
+    const sortedDates = Object.keys(gamesPerDate).sort();
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dateLabels = sortedDates.map(d => {
+      const parts = d.split('.');
+      if (parts.length === 3) {
+        const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        const dayAbbr = dayNames[date.getDay()];
+        return `${dayAbbr} ${parseInt(parts[1])}/${parseInt(parts[2])}`;
+      }
+      return d;
+    });
+    const dateCounts = sortedDates.map(d => gamesPerDate[d]);
+
+    const scheduleChart = new Chart(scheduleCanvas, {
+      type: 'bar',
+      data: {
+        labels: dateLabels,
+        datasets: [{
+          label: 'Games Played',
+          data: dateCounts,
+          backgroundColor: 'rgba(212, 165, 116, 0.7)',
+          borderColor: 'var(--accent)',
+          borderWidth: 1,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: items => items.length ? sortedDates[items[0].dataIndex] : '',
+              label: ctx => `${ctx.parsed.y} game${ctx.parsed.y !== 1 ? 's' : ''}`
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { font: { size: 10 }, maxRotation: 45 } },
+          y: { beginAtZero: true, ticks: { stepSize: 1 }, title: { display: true, text: 'Games' } }
+        }
+      }
+    });
+    activeCharts.push(scheduleChart);
+  }
+
+  // --- Render Civ Usage Pie Charts and Win Rate by Civ Bar Charts ---
+  players.forEach((name, pi) => {
+    const t = TREND_DATA[name];
+    const civs = t.civs || [];
+    const wins = t.wins || [];
+
+    // Count civ usage and wins
+    const civStats = {};
+    civs.forEach((civ, i) => {
+      if (!civStats[civ]) civStats[civ] = { count: 0, wins: 0, losses: 0 };
+      civStats[civ].count++;
+      if (wins[i] === true) civStats[civ].wins++;
+      else if (wins[i] === false) civStats[civ].losses++;
+    });
+
+    const civNames = Object.keys(civStats).sort((a, b) => civStats[b].count - civStats[a].count);
+    const civCounts = civNames.map(c => civStats[c].count);
+    const civColors = civNames.map((_, i) => PLAYER_COLORS[i % PLAYER_COLORS.length]);
+
+    // Civ Usage Pie Chart
+    const pieCanvas = document.getElementById(`civ-usage-${pi}`);
+    if (pieCanvas && civNames.length > 0) {
+      const pieChart = new Chart(pieCanvas, {
+        type: 'pie',
+        data: {
+          labels: civNames,
+          datasets: [{
+            data: civCounts,
+            backgroundColor: civColors.map(c => c + 'cc'),
+            borderColor: civColors,
+            borderWidth: 1,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'right', labels: { boxWidth: 12, padding: 6, font: { size: 11 } } },
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const pct = ((ctx.parsed / civs.length) * 100).toFixed(0);
+                  return `${ctx.label}: ${ctx.parsed} (${pct}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+      activeCharts.push(pieChart);
+    }
+
+    // Win Rate by Civ Bar Chart
+    const barCanvas = document.getElementById(`civ-winrate-${pi}`);
+    if (barCanvas && civNames.length > 0) {
+      // Only show civs with at least one decided game
+      const civsWithGames = civNames.filter(c => civStats[c].wins + civStats[c].losses > 0);
+      const winRates = civsWithGames.map(c => {
+        const total = civStats[c].wins + civStats[c].losses;
+        return total > 0 ? (civStats[c].wins / total * 100) : null;
+      });
+      const barColors = winRates.map(r => r >= 50 ? 'var(--green)' : 'var(--red)');
+
+      const barChart = new Chart(barCanvas, {
+        type: 'bar',
+        data: {
+          labels: civsWithGames,
+          datasets: [{
+            label: 'Win Rate %',
+            data: winRates,
+            backgroundColor: barColors.map(c => c === 'var(--green)' ? 'rgba(34, 197, 94, 0.7)' : 'rgba(239, 68, 68, 0.7)'),
+            borderColor: barColors.map(c => c === 'var(--green)' ? '#22c55e' : '#ef4444'),
+            borderWidth: 1,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const civ = civsWithGames[ctx.dataIndex];
+                  const stats = civStats[civ];
+                  return `${ctx.parsed.x.toFixed(0)}% (${stats.wins}W ${stats.losses}L)`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: { beginAtZero: true, max: 100, title: { display: true, text: 'Win Rate %' } },
+            y: { ticks: { font: { size: 11 } } }
+          }
+        }
+      });
+      activeCharts.push(barChart);
+    }
   });
 }
 

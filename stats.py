@@ -417,13 +417,12 @@ def compute_trend_stats(all_game_stats):
             "first_military": [],
             "total_military": [],
             "game_durations": [],
-            "loom_time": [],
-            "wheelbarrow_time": [],
             "wins": [],
             "final_resources": [],
             "final_objects": [],
             "peak_resources": [],
             "peak_objects": [],
+            "civs": [],  # Track civ usage for pie chart
         }
 
         for gs in all_game_stats:
@@ -463,16 +462,8 @@ def compute_trend_stats(all_game_stats):
                 player_trend["peak_resources"].append(ts.get("peak_resources"))
                 player_trend["peak_objects"].append(ts.get("peak_objects"))
 
-                # Eco research timings
-                loom_t = None
-                wb_t = None
-                for r in stats["researches"]:
-                    if r["tech_id"] == 22 and loom_t is None:
-                        loom_t = r["time_s"]
-                    elif r["tech_id"] == 213 and wb_t is None:
-                        wb_t = r["time_s"]
-                player_trend["loom_time"].append(loom_t)
-                player_trend["wheelbarrow_time"].append(wb_t)
+                # Track civ usage
+                player_trend["civs"].append(p.get("civ_name", "Unknown"))
 
         trends[name] = player_trend
 

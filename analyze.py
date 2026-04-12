@@ -70,7 +70,7 @@ Usage:
 
 Options:
   --dir <path>       Directory containing .aoe2record files
-  --output <path>    Output HTML file (default: output/dashboard.html)
+  --output <path>    Output HTML file (default: docs/dashboard.html)
   --include-sp       Include single-player replays (skipped by default)
   --help             Show this help message
 
@@ -89,7 +89,7 @@ savegame folder at:
 def main():
     # Parse CLI args
     path = None
-    output = os.path.join("output", "dashboard.html")
+    output = os.path.join("docs", "dashboard.html")
     args = sys.argv[1:]
 
     include_sp = False
