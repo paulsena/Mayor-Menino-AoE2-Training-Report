@@ -407,9 +407,17 @@ body {
   <div class="content" id="trends-content"></div>
 </div>
 
+<div id="loading-overlay" style="position:fixed;inset:0;background:var(--bg-primary);display:flex;align-items:center;justify-content:center;z-index:9999">
+  <div style="text-align:center">
+    <div style="font-size:1.5rem;color:var(--accent);margin-bottom:1rem">Loading data...</div>
+    <div style="color:var(--text-muted)">Fetching game statistics</div>
+  </div>
+</div>
+
 <script>
-const GAME_DATA = /*__GAME_DATA__*/;
-const TREND_DATA = /*__TREND_DATA__*/;
+// Data loaded via fetch
+let GAME_DATA = [];
+let TREND_DATA = {};
 
 const PLAYER_COLORS = ['#3b82f6','#ef4444','#22c55e','#eab308','#06b6d4','#d946ef','#6b7280','#f97316'];
 
@@ -443,10 +451,39 @@ let currentGameIdx = 0;
 let selectedPlayers = new Set();
 let selectedTrendPlayers = new Set();
 
-// Collect all human player names across all games
-const allHumanPlayers = new Set();
-GAME_DATA.forEach(g => g.players.filter(p => p.is_human).forEach(p => allHumanPlayers.add(p.name)));
-allHumanPlayers.forEach(n => { selectedPlayers.add(n); selectedTrendPlayers.add(n); });
+// Load data and initialize
+async function loadData() {
+  try {
+    const [gamesRes, trendsRes] = await Promise.all([
+      fetch('data/games.json'),
+      fetch('data/trends.json')
+    ]);
+    GAME_DATA = await gamesRes.json();
+    TREND_DATA = await trendsRes.json();
+    initApp();
+  } catch (err) {
+    document.getElementById('loading-overlay').innerHTML = `
+      <div style="text-align:center;color:var(--red)">
+        <div style="font-size:1.5rem;margin-bottom:1rem">Failed to load data</div>
+        <div style="color:var(--text-muted)">${err.message}</div>
+      </div>`;
+  }
+}
+
+function initApp() {
+  // Hide loading overlay
+  document.getElementById('loading-overlay').style.display = 'none';
+
+  // Collect all human player names across all games
+  const allHumanPlayers = new Set();
+  GAME_DATA.forEach(g => g.players.filter(p => p.is_human).forEach(p => allHumanPlayers.add(p.name)));
+  allHumanPlayers.forEach(n => { selectedPlayers.add(n); selectedTrendPlayers.add(n); });
+
+  // Initialize the rest of the app
+  initUI();
+}
+
+function initUI() {
 
 // --- Tab switching ---
 document.querySelectorAll('.tab').forEach(tab => {
@@ -1348,8 +1385,12 @@ function renderTrends() {
   });
 }
 
-// Init
-initGameSelector();
+  // Init game selector (inside initUI)
+  initGameSelector();
+}
+
+// Start loading data when page loads
+loadData();
 </script>
 </body>
 </html>
