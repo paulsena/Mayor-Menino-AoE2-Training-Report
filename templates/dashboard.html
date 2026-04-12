@@ -450,6 +450,7 @@ document.querySelectorAll('.tab').forEach(tab => {
     tab.classList.add('active');
     document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
     if (tab.dataset.tab === 'trends') renderTrends();
+    else if (tab.dataset.tab === 'single') renderSingleGame(currentGameIdx, true);
   });
 });
 
@@ -1036,12 +1037,23 @@ function renderTrends() {
       charts: [
         { id: 'apm-trend', title: 'APM Over Games', key: 'apm', isTime: false, lower_is_better: false },
         { id: 'duration-trend', title: 'Game Duration (min)', key: 'game_durations', isTime: false, lower_is_better: false },
+        { id: 'difficulty-trend', title: 'AI Difficulty', key: 'ai_difficulty', isTime: false, lower_is_better: false, isDifficulty: true },
       ]
     },
   ];
 
+  // Difficulty level names for y-axis
+  const DIFFICULTY_NAMES = {0: 'Easiest', 1: 'Standard', 2: 'Moderate', 3: 'Hard', 4: 'Hardest', 5: 'Extreme'};
+
   // Flatten for chart rendering later
   const chartConfigs = chartGroups.flatMap(g => g.charts);
+
+  // Grade legend for age-up times
+  const ageGradeLegend = `<div style="display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted)">
+    <div><strong>Feudal:</strong> <span style="color:#22c55e">Excellent &lt;8:00</span> · <span style="color:#84cc16">Great &lt;9:00</span> · <span style="color:#eab308">Good &lt;10:00</span> · <span style="color:#f97316">Average &lt;12:00</span> · <span style="color:#ef4444">Needs Work 12:00+</span></div>
+    <div><strong>Castle:</strong> <span style="color:#22c55e">Excellent &lt;16:00</span> · <span style="color:#84cc16">Great &lt;18:00</span> · <span style="color:#eab308">Good &lt;21:00</span> · <span style="color:#f97316">Average &lt;25:00</span> · <span style="color:#ef4444">Needs Work 25:00+</span></div>
+    <div><strong>Imperial:</strong> <span style="color:#22c55e">Excellent &lt;30:00</span> · <span style="color:#84cc16">Great &lt;35:00</span> · <span style="color:#eab308">Good &lt;40:00</span> · <span style="color:#f97316">Average &lt;50:00</span> · <span style="color:#ef4444">Needs Work 50:00+</span></div>
+  </div>`;
 
   // Render grouped sections
   chartGroups.forEach(group => {
@@ -1051,6 +1063,7 @@ function renderTrends() {
         <span class="section-toggle">▼</span>
       </div>
       <div class="section-content">
+        ${group.id === 'section-age-times' ? ageGradeLegend : ''}
         <div class="grid grid-2">`;
     group.charts.forEach(cfg => {
       html += `<div class="card"><h3>${cfg.title}</h3><div class="chart-container"><canvas id="${cfg.id}"></canvas></div></div>`;
@@ -1082,6 +1095,7 @@ function renderTrends() {
     const datasets = [];
     players.forEach((name, pi) => {
       const t = TREND_DATA[name];
+      if (!t[cfg.key]) return; // Skip if data not available
       const data = t[cfg.key].map(v => {
         if (v == null) return null;
         if (cfg.isTime) return v / 60; // seconds → minutes
@@ -1132,6 +1146,7 @@ function renderTrends() {
                 const v = ctx.parsed.y;
                 if (v == null) return `${ctx.dataset.label}: N/A`;
                 if (cfg.isTime) return `${ctx.dataset.label}: ${formatTime(v * 60)}`;
+                if (cfg.isDifficulty) return `${ctx.dataset.label}: ${DIFFICULTY_NAMES[v] || v}`;
                 return `${ctx.dataset.label}: ${v}`;
               }
             }
@@ -1142,9 +1157,14 @@ function renderTrends() {
           y: {
             beginAtZero: !cfg.isTime,
             reverse: cfg.lower_is_better && cfg.isTime,
-            title: { display: true, text: cfg.isTime ? 'Minutes' : cfg.title },
+            min: cfg.isDifficulty ? 0 : undefined,
+            max: cfg.isDifficulty ? 5 : undefined,
+            title: { display: true, text: cfg.isTime ? 'Minutes' : (cfg.isDifficulty ? 'Difficulty' : cfg.title) },
             ticks: cfg.isTime ? {
               callback: v => formatTime(v * 60)
+            } : cfg.isDifficulty ? {
+              stepSize: 1,
+              callback: v => DIFFICULTY_NAMES[v] || v
             } : {}
           }
         }

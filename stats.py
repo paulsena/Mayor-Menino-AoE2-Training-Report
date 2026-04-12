@@ -423,6 +423,7 @@ def compute_trend_stats(all_game_stats):
             "peak_resources": [],
             "peak_objects": [],
             "civs": [],  # Track civ usage for pie chart
+            "ai_difficulty": [],  # Track AI difficulty level
         }
 
         for gs in all_game_stats:
@@ -464,6 +465,9 @@ def compute_trend_stats(all_game_stats):
 
                 # Track civ usage
                 player_trend["civs"].append(p.get("civ_name", "Unknown"))
+
+                # Track AI difficulty
+                player_trend["ai_difficulty"].append(gs["metadata"].get("difficulty_id", -1))
 
         trends[name] = player_trend
 
