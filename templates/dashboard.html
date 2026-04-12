@@ -907,33 +907,24 @@ function renderTrends() {
     </div>
   </div>`;
 
-  // --- Civ Usage Section ---
-  html += `<div class="section" id="section-civ-usage">
-    <div class="section-header" onclick="toggleSection('section-civ-usage')">
-      <span class="section-toggle"></span>
-      <h2>Civilization Usage</h2>
-    </div>
-    <div class="section-content">
-      <div class="grid grid-2">`;
-  players.forEach((name, pi) => {
-    html += `<div class="card"><h3>${name}</h3><div class="chart-container"><canvas id="civ-usage-${pi}"></canvas></div></div>`;
-  });
-  html += `</div>
-    </div>
+  // --- Age-Up Times Over Games Section (rendered early) ---
+  const ageGradeLegend = `<div style="display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted)">
+    <div><strong>Feudal:</strong> <span style="color:#22c55e">Excellent &lt;8:00</span> · <span style="color:#84cc16">Great &lt;9:00</span> · <span style="color:#eab308">Good &lt;10:00</span> · <span style="color:#f97316">Average &lt;12:00</span> · <span style="color:#ef4444">Needs Work 12:00+</span></div>
+    <div><strong>Castle:</strong> <span style="color:#22c55e">Excellent &lt;16:00</span> · <span style="color:#84cc16">Great &lt;18:00</span> · <span style="color:#eab308">Good &lt;21:00</span> · <span style="color:#f97316">Average &lt;25:00</span> · <span style="color:#ef4444">Needs Work 25:00+</span></div>
+    <div><strong>Imperial:</strong> <span style="color:#22c55e">Excellent &lt;30:00</span> · <span style="color:#84cc16">Great &lt;35:00</span> · <span style="color:#eab308">Good &lt;40:00</span> · <span style="color:#f97316">Average &lt;50:00</span> · <span style="color:#ef4444">Needs Work 50:00+</span></div>
   </div>`;
-
-  // --- Win Rate by Civ Section (collapsed by default) ---
-  html += `<div class="section collapsed" id="section-civ-winrate">
-    <div class="section-header" onclick="toggleSection('section-civ-winrate')">
+  html += `<div class="section" id="section-age-times">
+    <div class="section-header" onclick="toggleSection('section-age-times')">
       <span class="section-toggle"></span>
-      <h2>Win Rate by Civilization</h2>
+      <h2>Age-Up Times Over Games</h2>
     </div>
     <div class="section-content">
-      <div class="grid grid-2">`;
-  players.forEach((name, pi) => {
-    html += `<div class="card"><h3>${name}</h3><div class="chart-container"><canvas id="civ-winrate-${pi}"></canvas></div></div>`;
-  });
-  html += `</div>
+      ${ageGradeLegend}
+      <div class="grid grid-2">
+        <div class="card"><h3>Feudal Age Times</h3><div class="chart-container"><canvas id="feudal-trend"></canvas></div></div>
+        <div class="card"><h3>Castle Age Times</h3><div class="chart-container"><canvas id="castle-trend"></canvas></div></div>
+        <div class="card"><h3>Imperial Age Times</h3><div class="chart-container"><canvas id="imperial-trend"></canvas></div></div>
+      </div>
     </div>
   </div>`;
 
@@ -999,17 +990,45 @@ function renderTrends() {
     </div>
   </div>`;
 
+  // --- Civ Usage Section ---
+  html += `<div class="section" id="section-civ-usage">
+    <div class="section-header" onclick="toggleSection('section-civ-usage')">
+      <span class="section-toggle"></span>
+      <h2>Civilization Usage</h2>
+    </div>
+    <div class="section-content">
+      <div class="grid grid-2">`;
+  players.forEach((name, pi) => {
+    html += `<div class="card"><h3>${name}</h3><div class="chart-container"><canvas id="civ-usage-${pi}"></canvas></div></div>`;
+  });
+  html += `</div>
+    </div>
+  </div>`;
+
+  // --- Win Rate by Civ Section (collapsed by default) ---
+  html += `<div class="section collapsed" id="section-civ-winrate">
+    <div class="section-header" onclick="toggleSection('section-civ-winrate')">
+      <span class="section-toggle"></span>
+      <h2>Win Rate by Civilization</h2>
+    </div>
+    <div class="section-content">
+      <div class="grid grid-2">`;
+  players.forEach((name, pi) => {
+    html += `<div class="card"><h3>${name}</h3><div class="chart-container"><canvas id="civ-winrate-${pi}"></canvas></div></div>`;
+  });
+  html += `</div>
+    </div>
+  </div>`;
+
   // Charts grouped by category
+  // Age-up times charts are defined separately above (feudal-trend, castle-trend, imperial-trend)
+  const ageTimesCharts = [
+    { id: 'feudal-trend', key: 'feudal_times', isTime: true },
+    { id: 'castle-trend', key: 'castle_times', isTime: true },
+    { id: 'imperial-trend', key: 'imperial_times', isTime: true },
+  ];
+
   const chartGroups = [
-    {
-      id: 'section-age-times',
-      title: 'Age-Up Times Over Games',
-      charts: [
-        { id: 'feudal-trend', title: 'Feudal Age Times', key: 'feudal_times', isTime: true, lower_is_better: true },
-        { id: 'castle-trend', title: 'Castle Age Times', key: 'castle_times', isTime: true, lower_is_better: true },
-        { id: 'imperial-trend', title: 'Imperial Age Times', key: 'imperial_times', isTime: true, lower_is_better: true },
-      ]
-    },
     {
       id: 'section-economy',
       title: 'Economy Trends',
@@ -1053,15 +1072,8 @@ function renderTrends() {
   // Difficulty level names for y-axis
   const DIFFICULTY_NAMES = {0: 'Easiest', 1: 'Standard', 2: 'Moderate', 3: 'Hard', 4: 'Hardest', 5: 'Extreme'};
 
-  // Flatten for chart rendering later
-  const chartConfigs = chartGroups.flatMap(g => g.charts);
-
-  // Grade legend for age-up times
-  const ageGradeLegend = `<div style="display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted)">
-    <div><strong>Feudal:</strong> <span style="color:#22c55e">Excellent &lt;8:00</span> · <span style="color:#84cc16">Great &lt;9:00</span> · <span style="color:#eab308">Good &lt;10:00</span> · <span style="color:#f97316">Average &lt;12:00</span> · <span style="color:#ef4444">Needs Work 12:00+</span></div>
-    <div><strong>Castle:</strong> <span style="color:#22c55e">Excellent &lt;16:00</span> · <span style="color:#84cc16">Great &lt;18:00</span> · <span style="color:#eab308">Good &lt;21:00</span> · <span style="color:#f97316">Average &lt;25:00</span> · <span style="color:#ef4444">Needs Work 25:00+</span></div>
-    <div><strong>Imperial:</strong> <span style="color:#22c55e">Excellent &lt;30:00</span> · <span style="color:#84cc16">Great &lt;35:00</span> · <span style="color:#eab308">Good &lt;40:00</span> · <span style="color:#f97316">Average &lt;50:00</span> · <span style="color:#ef4444">Needs Work 50:00+</span></div>
-  </div>`;
+  // Flatten for chart rendering later (include age times charts)
+  const chartConfigs = [...ageTimesCharts, ...chartGroups.flatMap(g => g.charts)];
 
   // Render grouped sections
   chartGroups.forEach(group => {
@@ -1071,7 +1083,6 @@ function renderTrends() {
         <h2>${group.title}</h2>
       </div>
       <div class="section-content">
-        ${group.id === 'section-age-times' ? ageGradeLegend : ''}
         <div class="grid grid-2">`;
     group.charts.forEach(cfg => {
       html += `<div class="card"><h3>${cfg.title}</h3><div class="chart-container"><canvas id="${cfg.id}"></canvas></div></div>`;
@@ -1163,8 +1174,7 @@ function renderTrends() {
         scales: {
           x: { ticks: { font: { size: 10 } } },
           y: {
-            beginAtZero: !cfg.isTime,
-            reverse: cfg.lower_is_better && cfg.isTime,
+            beginAtZero: true,
             min: cfg.isDifficulty ? 0 : undefined,
             max: cfg.isDifficulty ? 5 : undefined,
             title: { display: true, text: cfg.isTime ? 'Minutes' : (cfg.isDifficulty ? 'Difficulty' : cfg.title) },
