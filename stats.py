@@ -313,11 +313,12 @@ def compute_player_stats(actions, player_number, game_duration_ms, game_speed):
     }
 
 
-def compute_timeseries_stats(timeseries, game_speed):
+def compute_timeseries_stats(timeseries, game_speed, villager_queues=None):
     """Compute summary stats from player timeseries data.
 
     Returns a dict with the timeseries points (converted to game time)
-    and final snapshot values.
+    and final snapshot values. Also computes villager count over time
+    based on villager queue actions.
     """
     if not timeseries:
         return {
@@ -328,6 +329,27 @@ def compute_timeseries_stats(timeseries, game_speed):
             "peak_objects": None,
         }
 
+    # Pre-compute villager finish times for efficient lookup
+    # Each villager takes ~25s to train
+    vil_train_time = 25
+    vil_finish_times = []
+    if villager_queues:
+        for vq in villager_queues:
+            finish_time = vq["time_s"] + vil_train_time
+            for _ in range(vq["amount"]):
+                vil_finish_times.append(finish_time)
+        vil_finish_times.sort()
+
+    def count_vils_at(target_s):
+        """Count villagers finished by target_s (includes 3 starting vils)."""
+        count = 3  # Starting villagers
+        for ft in vil_finish_times:
+            if ft <= target_s:
+                count += 1
+            else:
+                break
+        return count
+
     points = []
     peak_resources = 0
     peak_objects = 0
@@ -335,10 +357,12 @@ def compute_timeseries_stats(timeseries, game_speed):
         game_time_s = round(entry["time_ms"] / 1000 * game_speed, 1)
         res = entry["total_resources"]
         obj = entry["total_objects"]
+        vils = count_vils_at(game_time_s) if villager_queues else None
         points.append({
             "time_s": game_time_s,
             "resources": res,
             "objects": obj,
+            "villagers": vils,
         })
         if res > peak_resources:
             peak_resources = res
@@ -374,8 +398,10 @@ def compute_game_stats(parsed_replay):
         )
 
         # Compute timeseries stats from raw timeseries data
+        # Pass villager queues to compute villager count over time
+        vil_queues = player_stats.get("villagers", {}).get("queues", [])
         ts_stats = compute_timeseries_stats(
-            player.get("timeseries", []), game_speed
+            player.get("timeseries", []), game_speed, vil_queues
         )
 
         # Build player entry (exclude raw timeseries to keep output lean)

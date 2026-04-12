@@ -144,6 +144,9 @@ body {
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
 .grid-wide { grid-template-columns: 1fr; }
 .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1200px) { .grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 768px) { .grid-3 { grid-template-columns: 1fr; } }
 
 /* Player columns layout — grid ensures cards align across players */
 .players-columns {
@@ -596,7 +599,8 @@ function renderSingleGame(idx, skipFilterRebuild) {
   // --- Resource timeseries chart (full-width) ---
   const hasTimeseries = visiblePlayers.some(p => p.timeseries?.points?.length > 0);
   if (hasTimeseries) {
-    html += `<div class="grid grid-2">
+    html += `<div class="grid grid-3">
+      <div class="card"><h3>Villager Count Over Time</h3><div class="chart-container chart-container-tall"><canvas id="villagers-chart-${idx}"></canvas></div></div>
       <div class="card"><h3>Total Resources Over Time</h3><div class="chart-container chart-container-tall"><canvas id="resources-chart-${idx}"></canvas></div></div>
       <div class="card"><h3>Units + Buildings Over Time</h3><div class="chart-container chart-container-tall"><canvas id="objects-chart-${idx}"></canvas></div></div>
     </div>`;
@@ -823,6 +827,7 @@ function renderSingleGame(idx, skipFilterRebuild) {
     activeCharts.push(chart);
   }
 
+  renderTimeseriesChart(`villagers-chart-${idx}`, 'villagers', 'Villager Count');
   renderTimeseriesChart(`resources-chart-${idx}`, 'resources', 'Total Resources');
   renderTimeseriesChart(`objects-chart-${idx}`, 'objects', 'Units + Buildings');
 }
