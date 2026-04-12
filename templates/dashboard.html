@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brooks St. AoE2 Training Report</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg-primary: #0f1419;
+  --bg-secondary: #1a2332;
+  --bg-card: #1e293b;
+  --bg-hover: #253347;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent: #d4a574;
+  --accent-light: #e8c89e;
+  --border: #334155;
+  --green: #22c55e;
+  --yellow: #eab308;
+  --orange: #f97316;
+  --red: #ef4444;
+  --blue: #3b82f6;
+  --purple: #a855f7;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+.header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  border-bottom: 2px solid var(--accent);
+  padding: 1.5rem 2rem;
+  text-align: center;
+}
+
+.header h1 {
+  font-size: 1.8rem;
+  color: var(--accent-light);
+  letter-spacing: 1px;
+}
+
+.header p { color: var(--text-secondary); margin-top: 0.25rem; }
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+}
+
+.tab {
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  font-size: 0.95rem;
+}
+
+.tab:hover { color: var(--text-primary); background: var(--bg-hover); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Sticky controls header */
+.sticky-controls {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.control-label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Game dropdown */
+.game-dropdown {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  min-width: 250px;
+  cursor: pointer;
+}
+
+.game-dropdown:focus { outline: none; border-color: var(--accent); }
+.game-dropdown option { background: var(--bg-card); color: var(--text-primary); }
+
+/* Player filter chips */
+.player-filter {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.player-chip {
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border-radius: 16px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.player-chip:hover { border-color: var(--accent); color: var(--text-primary); }
+.player-chip.active { border-color: var(--accent); background: var(--accent); color: #000; }
+
+/* Content */
+.content { padding: 1.5rem 2rem; margin: 0 auto; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Cards */
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.grid-wide { grid-template-columns: 1fr; }
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* Player columns layout — grid ensures cards align across players */
+.players-columns {
+  display: grid;
+  gap: 0.75rem;
+  align-items: stretch;
+  grid-auto-flow: column;
+}
+
+.player-col-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.player-col-header .player-name { font-weight: 700; font-size: 1rem; }
+.player-col-header .player-civ { color: var(--text-secondary); font-size: 0.85rem; }
+
+/* Comparison table */
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+  font-size: 0.85rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.comparison-table th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.comparison-table td {
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.comparison-table tr:last-child td { border-bottom: none; }
+.comparison-table td:first-child { color: var(--text-secondary); font-weight: 500; }
+.comparison-table td.best { color: var(--accent); font-weight: 700; }
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.card h3 {
+  color: var(--accent);
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Stats */
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.stat-row:last-child { border-bottom: none; }
+.stat-label { color: var(--text-secondary); font-size: 0.9rem; }
+.stat-value { font-weight: 600; font-size: 0.9rem; }
+
+.benchmark-badge {
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 0.5rem;
+}
+
+/* Player color dot */
+.player-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.player-name { font-weight: 600; font-size: 1.05rem; }
+.player-civ { color: var(--text-secondary); font-size: 0.9rem; }
+
+/* Build order */
+.build-order-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.bo-item {
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  border: 1px solid var(--border);
+}
+
+.bo-item.research { background: rgba(168, 85, 247, 0.15); border-color: rgba(168, 85, 247, 0.3); }
+.bo-item.build { background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.3); }
+.bo-time { color: var(--text-muted); margin-right: 0.3rem; }
+
+/* Military table */
+.mil-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.mil-table th { text-align: left; color: var(--text-muted); padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--border); }
+.mil-table td { padding: 0.3rem 0.5rem; }
+
+/* Game info bar */
+.game-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  padding: 1rem 0;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.info-item span:first-child { color: var(--text-muted); font-size: 0.8rem; display: block; }
+.info-item span:last-child { font-size: 1rem; font-weight: 500; }
+
+/* Chart container */
+.chart-container { position: relative; height: 250px; margin-top: 0.5rem; min-width: 0; }
+.chart-container-tall { height: 350px; }
+
+/* Trend summary cards */
+.summary-cards { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+
+.summary-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  min-width: 150px;
+  flex: 1;
+}
+
+.summary-card .label { color: var(--text-muted); font-size: 0.8rem; }
+.summary-card .value { font-size: 1.5rem; font-weight: 700; color: var(--accent); margin: 0.25rem 0; }
+.summary-card .detail { color: var(--text-secondary); font-size: 0.8rem; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-secondary); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Player color map */
+.color-0 { background: #3b82f6; }  /* Blue */
+.color-1 { background: #ef4444; }  /* Red */
+.color-2 { background: #22c55e; }  /* Green */
+.color-3 { background: #eab308; }  /* Yellow */
+.color-4 { background: #06b6d4; }  /* Cyan */
+.color-5 { background: #d946ef; }  /* Purple */
+.color-6 { background: #6b7280; }  /* Grey */
+.color-7 { background: #f97316; }  /* Orange */
+</style>
+</head>
+<body>
+
+<div class="header" style="padding:0;background:linear-gradient(90deg, #1a1209 0%, #3b2615 15%, #4a3020 35%, #4a3020 65%, #3b2615 85%, #1a1209 100%);border-bottom:2px solid var(--accent)">
+  <img src="banner.png" alt="Menino's AoE2 Training Report" style="max-width:600px;width:100%;display:block;margin:0 auto">
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="single">Single Game</div>
+  <div class="tab" data-tab="trends">Trends</div>
+</div>
+
+<div id="tab-single" class="tab-content active">
+  <div class="sticky-controls" id="single-controls">
+    <div class="control-group">
+      <span class="control-label">Game</span>
+      <select class="game-dropdown" id="game-dropdown"></select>
+    </div>
+    <div class="control-group">
+      <span class="control-label">Players</span>
+      <div class="player-filter" id="player-filter"></div>
+    </div>
+  </div>
+  <div class="content" id="single-content"></div>
+</div>
+
+<div id="tab-trends" class="tab-content">
+  <div class="sticky-controls" id="trends-controls">
+    <div class="control-group">
+      <span class="control-label">Players</span>
+      <div class="player-filter" id="trends-player-filter"></div>
+    </div>
+  </div>
+  <div class="content" id="trends-content"></div>
+</div>
+
+<script>
+const GAME_DATA = /*__GAME_DATA__*/;
+const TREND_DATA = /*__TREND_DATA__*/;
+
+const PLAYER_COLORS = ['#3b82f6','#ef4444','#22c55e','#eab308','#06b6d4','#d946ef','#6b7280','#f97316'];
+
+// Chart.js defaults
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.borderColor = '#334155';
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+
+let activeCharts = [];
+function destroyCharts() {
+  activeCharts.forEach(c => c.destroy());
+  activeCharts = [];
+}
+
+function formatTime(s) {
+  if (s == null) return 'N/A';
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2, '0')}`;
+}
+
+// --- State ---
+let currentGameIdx = 0;
+let selectedPlayers = new Set();
+let selectedTrendPlayers = new Set();
+
+// Collect all human player names across all games
+const allHumanPlayers = new Set();
+GAME_DATA.forEach(g => g.players.filter(p => p.is_human).forEach(p => allHumanPlayers.add(p.name)));
+allHumanPlayers.forEach(n => { selectedPlayers.add(n); selectedTrendPlayers.add(n); });
+
+// --- Tab switching ---
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+    if (tab.dataset.tab === 'trends') renderTrends();
+  });
+});
+
+// --- Player filter chips ---
+function buildPlayerFilter(containerId, playerNames, selectedSet, onChangeCallback) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  playerNames.forEach(name => {
+    const chip = document.createElement('div');
+    chip.className = `player-chip${selectedSet.has(name) ? ' active' : ''}`;
+    chip.textContent = name;
+    chip.addEventListener('click', () => {
+      if (selectedSet.has(name)) {
+        if (selectedSet.size > 1) selectedSet.delete(name);
+      } else {
+        selectedSet.add(name);
+      }
+      chip.classList.toggle('active', selectedSet.has(name));
+      onChangeCallback();
+    });
+    container.appendChild(chip);
+  });
+}
+
+// Update single-game player filter when game changes
+function updateGamePlayerFilter(idx) {
+  const game = GAME_DATA[idx];
+  const gamePlayers = game.players.filter(p => p.is_human).map(p => p.name);
+  // Reset selection to all players in this game
+  selectedPlayers.clear();
+  gamePlayers.forEach(n => selectedPlayers.add(n));
+  buildPlayerFilter('player-filter', gamePlayers, selectedPlayers, () => renderSingleGame(currentGameIdx, true));
+}
+
+// --- Game selector dropdown ---
+function initGameSelector() {
+  const dropdown = document.getElementById('game-dropdown');
+  GAME_DATA.forEach((g, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    const dateDisplay = g.metadata.game_date_display || g.metadata.game_date || `Game ${i+1}`;
+    const dur = g.metadata.duration_minutes;
+    const map = g.metadata.map_name || '';
+    const humans = g.players.filter(p => p.is_human).map(p => p.name).join(', ');
+    opt.textContent = `${dateDisplay} - ${map} (${dur}m) ${humans}`;
+    dropdown.appendChild(opt);
+  });
+  dropdown.addEventListener('change', () => {
+    currentGameIdx = parseInt(dropdown.value);
+    updateGamePlayerFilter(currentGameIdx);
+    renderSingleGame(currentGameIdx);
+  });
+
+  buildPlayerFilter('trends-player-filter', [...allHumanPlayers], selectedTrendPlayers, () => renderTrends());
+
+  if (GAME_DATA.length > 0) {
+    updateGamePlayerFilter(0);
+    renderSingleGame(0);
+  }
+}
+
+// --- Comparison table helpers ---
+function bestVal(values, lower_is_better) {
+  const valid = values.filter(v => v != null);
+  if (!valid.length) return null;
+  return lower_is_better ? Math.min(...valid) : Math.max(...valid);
+}
+
+function compRow(label, players, getter, formatter, lower_is_better) {
+  const vals = players.map(p => getter(p));
+  const best = bestVal(vals, lower_is_better);
+  const cells = vals.map(v => {
+    const display = formatter(v);
+    const isBest = v != null && v === best && players.length > 1;
+    return `<td${isBest ? ' class="best"' : ''}>${display}</td>`;
+  }).join('');
+  return `<tr><td>${label}</td>${cells}</tr>`;
+}
+
+// --- Single game rendering ---
+function renderSingleGame(idx, skipFilterRebuild) {
+  destroyCharts();
+  const game = GAME_DATA[idx];
+  const meta = game.metadata;
+  const container = document.getElementById('single-content');
+
+  // Only show human players that pass the filter
+  const visiblePlayers = game.players.filter(p => p.is_human && selectedPlayers.has(p.name));
+
+  const dateDisplay = meta.game_date_display || meta.game_date || 'Unknown';
+
+  // --- Game info bar ---
+  let html = `<div class="game-info">
+    <div class="info-item"><span>Map</span><span>${meta.map_name || 'Map ' + meta.map_id}</span></div>
+    <div class="info-item"><span>Duration</span><span>${meta.duration_minutes} min</span></div>
+    <div class="info-item"><span>Speed</span><span>${meta.speed?.toFixed(2) || '1.50'}</span></div>
+    <div class="info-item"><span>Date</span><span>${dateDisplay}</span></div>
+    <div class="info-item"><span>Pop Limit</span><span>${meta.population_limit || 200}</span></div>
+  </div>`;
+
+  // --- Winner/Loser banner ---
+  const winners = game.players.filter(p => p.winner === true).map(p => p.name).filter(Boolean);
+  const losers = game.players.filter(p => p.winner === false).map(p => p.name).filter(Boolean);
+  if (winners.length || losers.length) {
+    html += `<div style="display:flex;gap:1.5rem;margin-bottom:1rem;flex-wrap:wrap">`;
+    if (winners.length) html += `<div style="padding:0.5rem 1rem;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);border-radius:8px;font-size:0.9rem"><span style="color:var(--green);font-weight:700">WIN</span> <span style="color:var(--text-primary)">${winners.join(', ')}</span></div>`;
+    if (losers.length) html += `<div style="padding:0.5rem 1rem;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);border-radius:8px;font-size:0.9rem"><span style="color:var(--red);font-weight:700">LOSS</span> <span style="color:var(--text-primary)">${losers.join(', ')}</span></div>`;
+    html += `</div>`;
+  }
+
+  // --- Comparison table ---
+  if (visiblePlayers.length > 0) {
+    const pHeaders = visiblePlayers.map(p => {
+      const colorClass = `color-${p.color_id % 8}`;
+      const winBadge = p.winner === true ? ' <span style="color:var(--green);font-size:0.7rem">W</span>' : p.winner === false ? ' <span style="color:var(--red);font-size:0.7rem">L</span>' : '';
+      return `<th><span class="player-color ${colorClass}" style="display:inline-block;vertical-align:middle;margin-right:4px"></span>${p.name}${winBadge}</th>`;
+    }).join('');
+
+    html += `<table class="comparison-table">
+      <thead><tr><th>Stat</th>${pHeaders}</tr></thead>
+      <tbody>
+        ${compRow('Civilization', visiblePlayers, p => p.civ_name, v => v || 'N/A', false)}
+        ${compRow('Feudal Age', visiblePlayers, p => p.stats.age_ups.feudal.time_s, v => formatTime(v), true)}
+        ${compRow('Castle Age', visiblePlayers, p => p.stats.age_ups.castle.time_s, v => formatTime(v), true)}
+        ${compRow('Imperial Age', visiblePlayers, p => p.stats.age_ups.imperial.time_s, v => formatTime(v), true)}
+        ${compRow('APM', visiblePlayers, p => p.stats.apm.overall, v => v != null ? v : 'N/A', false)}
+        ${compRow('Idle TC (20min)', visiblePlayers, p => p.stats.idle_tc.early_game_s, v => formatTime(v), true)}
+        ${compRow('First Military', visiblePlayers, p => p.stats.military.first_military_time_s, v => formatTime(v), true)}
+        ${compRow('Total Military', visiblePlayers, p => p.stats.military.total_produced, v => v != null ? v : 'N/A', false)}
+        ${compRow('Total Villagers', visiblePlayers, p => p.stats.villagers.total_produced, v => v != null ? v : 'N/A', false)}
+        ${compRow('Final Resources', visiblePlayers, p => p.timeseries?.final_resources, v => v != null ? v.toLocaleString() : 'N/A', false)}
+        ${compRow('Peak Resources', visiblePlayers, p => p.timeseries?.peak_resources, v => v != null ? v.toLocaleString() : 'N/A', false)}
+        ${compRow('Final Units + Buildings', visiblePlayers, p => p.timeseries?.final_objects, v => v != null ? v : 'N/A', false)}
+        ${compRow('Peak Units + Buildings', visiblePlayers, p => p.timeseries?.peak_objects, v => v != null ? v : 'N/A', false)}
+      </tbody>
+    </table>`;
+  }
+
+  // --- Resource timeseries chart (full-width) ---
+  const hasTimeseries = visiblePlayers.some(p => p.timeseries?.points?.length > 0);
+  if (hasTimeseries) {
+    html += `<div class="grid grid-2">
+      <div class="card"><h3>Total Resources Over Time</h3><div class="chart-container chart-container-tall"><canvas id="resources-chart-${idx}"></canvas></div></div>
+      <div class="card"><h3>Units + Buildings Over Time</h3><div class="chart-container chart-container-tall"><canvas id="objects-chart-${idx}"></canvas></div></div>
+    </div>`;
+  }
+
+  // --- Player columns ---
+  const numCols = visiblePlayers.length || 1;
+  const numRows = 7; // header + 6 card types
+  html += `<div class="players-columns" style="grid-template-columns: repeat(${numCols}, minmax(0, 1fr)); grid-template-rows: repeat(${numRows}, auto)">`;
+  visiblePlayers.forEach((p, pi) => {
+    const s = p.stats;
+    const colorClass = `color-${p.color_id % 8}`;
+
+    html += `<div class="player-col-header">
+        <div class="player-color ${colorClass}"></div>
+        <span class="player-name">${p.name}</span>
+        <span class="player-civ">${p.civ_name}</span>
+      </div>`
+
+    html += `
+
+      <!-- Age-up times -->
+      <div class="card">
+        <h3>Age-Up Times</h3>
+        <div class="chart-container" style="height:120px">
+          <canvas id="ageup-chart-${idx}-${pi}"></canvas>
+        </div>
+        ${renderAgeUp('Feudal Age', s.age_ups.feudal)}
+        ${renderAgeUp('Castle Age', s.age_ups.castle)}
+        ${renderAgeUp('Imperial Age', s.age_ups.imperial)}
+      </div>
+
+      <!-- Economy -->
+      <div class="card">
+        <h3>Economy</h3>
+        <div class="stat-row"><span class="stat-label">Total Villagers</span><span class="stat-value">${s.villagers.total_produced}</span></div>
+        ${Object.entries(s.villagers.counts_at).map(([k,v]) =>
+          `<div class="stat-row"><span class="stat-label">Villagers @ ${k}</span><span class="stat-value">${v}</span></div>`
+        ).join('')}
+        <div class="stat-row"><span class="stat-label">Idle TC (first 20min)</span><span class="stat-value">${s.idle_tc.early_game_str}</span></div>
+        <h3 style="margin-top:0.75rem">Eco Upgrades</h3>
+        ${s.researches.filter(r => r.is_key && [22,213,249,202,203,221,14,13,12,55,182,278,279].includes(r.tech_id)).map(r =>
+          `<div class="stat-row"><span class="stat-label">${r.tech_name}</span><span class="stat-value">${r.time_str}</span></div>`
+        ).join('') || '<div class="stat-row"><span class="stat-label" style="color:var(--text-muted)">None researched</span></div>'}
+      </div>
+
+      <!-- Military -->
+      <div class="card">
+        <h3>Military</h3>
+        <div class="stat-row"><span class="stat-label">First Military</span><span class="stat-value">${s.military.first_military_time_str}</span></div>
+        <div class="stat-row"><span class="stat-label">Total Units</span><span class="stat-value">${s.military.total_produced}</span></div>
+        ${Object.entries(s.military.units).sort((a,b) => b[1].count - a[1].count).slice(0, 8).map(([name, data]) =>
+          `<div class="stat-row"><span class="stat-label">${name}</span><span class="stat-value">${data.count} <span style="color:var(--text-muted);font-size:0.75rem">(first @ ${formatTime(data.first_time_s)})</span></span></div>`
+        ).join('')}
+      </div>
+
+      <!-- APM -->
+      <div class="card">
+        <h3>Actions Per Minute</h3>
+        <div class="stat-row"><span class="stat-label">Overall APM</span><span class="stat-value">${s.apm.overall}</span></div>
+        <div class="chart-container">
+          <canvas id="apm-chart-${idx}-${pi}"></canvas>
+        </div>
+      </div>
+
+      <!-- Build Order -->
+      <div class="card">
+        <h3>Build Order (first 40 actions)</h3>
+        <div class="build-order-list">
+          ${s.build_order.map(bo =>
+            `<div class="bo-item ${bo.type}"><span class="bo-time">${bo.time_str}</span>${bo.name}</div>`
+          ).join('')}
+        </div>
+      </div>
+
+      <!-- Key Researches -->
+      <div class="card">
+        <h3>Key Researches</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:0.3rem">
+          ${s.researches.filter(r => r.is_key).map(r =>
+            `<div class="bo-item research"><span class="bo-time">${r.time_str}</span>${r.tech_name}</div>`
+          ).join('')}
+        </div>
+      </div>`;
+  });
+  html += '</div>';
+
+  container.innerHTML = html;
+
+  // Render age-up horizontal bar charts
+  visiblePlayers.forEach((p, pi) => {
+    const canvas = document.getElementById(`ageup-chart-${idx}-${pi}`);
+    if (!canvas) return;
+    const s = p.stats.age_ups;
+    const ages = ['feudal', 'castle', 'imperial'];
+    const labels = ['Feudal', 'Castle', 'Imperial'];
+    const colors = ['#eab308', '#f97316', '#ef4444'];
+    const times = ages.map(a => s[a].time_s ? s[a].time_s / 60 : null);
+
+    const chart = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: times,
+          backgroundColor: colors.map(c => c + '99'),
+          borderColor: colors,
+          borderWidth: 1,
+          barThickness: 20,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const v = ctx.parsed.x;
+                if (v == null) return 'N/A';
+                const age = ages[ctx.dataIndex];
+                const vils = s[age].villagers;
+                let tip = formatTime(v * 60);
+                if (vils != null) tip += ` (${vils} vils)`;
+                return tip;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            title: { display: true, text: 'Minutes' },
+            ticks: { callback: v => `${Math.floor(v)}m` }
+          },
+          y: { grid: { display: false } }
+        }
+      }
+    });
+    activeCharts.push(chart);
+  });
+
+  // Render APM charts
+  visiblePlayers.forEach((p, pi) => {
+    const canvas = document.getElementById(`apm-chart-${idx}-${pi}`);
+    if (!canvas || !p.stats.apm.over_time.length) return;
+    const chart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: p.stats.apm.over_time.map(d => formatTime(d.time_s)),
+        datasets: [{
+          label: 'APM',
+          data: p.stats.apm.over_time.map(d => d.apm),
+          borderColor: PLAYER_COLORS[p.color_id % 8],
+          backgroundColor: PLAYER_COLORS[p.color_id % 8] + '33',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { display: true, ticks: { maxTicksLimit: 8, font: { size: 10 } } },
+          y: { display: true, beginAtZero: true, title: { display: true, text: 'APM' } }
+        }
+      }
+    });
+    activeCharts.push(chart);
+  });
+
+  // Render resource/object timeseries charts
+  function renderTimeseriesChart(canvasId, dataKey, yLabel) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    // Build datasets for each visible player
+    const datasets = visiblePlayers.map(p => {
+      const points = p.timeseries?.points || [];
+      return {
+        label: p.name,
+        data: points.map(pt => ({ x: pt.time_s / 60, y: pt[dataKey] })),
+        borderColor: PLAYER_COLORS[p.color_id % 8],
+        backgroundColor: PLAYER_COLORS[p.color_id % 8] + '22',
+        fill: false,
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 2,
+      };
+    }).filter(ds => ds.data.length > 0);
+    if (!datasets.length) return;
+    const chart = new Chart(canvas, {
+      type: 'line',
+      data: { datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top', labels: { boxWidth: 12, padding: 8 } },
+          tooltip: {
+            callbacks: {
+              title: items => items.length ? formatTime(items[0].parsed.x * 60) : '',
+              label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            type: 'linear',
+            title: { display: true, text: 'Game Time (minutes)' },
+            ticks: { callback: v => `${Math.floor(v)}m` }
+          },
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: yLabel },
+            ticks: { callback: v => v >= 1000 ? `${(v/1000).toFixed(1)}k` : v }
+          }
+        }
+      }
+    });
+    activeCharts.push(chart);
+  }
+
+  renderTimeseriesChart(`resources-chart-${idx}`, 'resources', 'Total Resources');
+  renderTimeseriesChart(`objects-chart-${idx}`, 'objects', 'Units + Buildings');
+}
+
+function renderAgeUp(label, data) {
+  const [bLabel, bColor] = data.benchmark;
+  const vilText = data.villagers != null ? `<span style="color:var(--text-muted);font-size:0.75rem;margin-left:0.5rem">${data.villagers} vils</span>` : '';
+  return `<div class="stat-row">
+    <span class="stat-label">${label}</span>
+    <span class="stat-value">
+      ${data.time_str}${vilText}
+      <span class="benchmark-badge" style="background:${bColor}22;color:${bColor}">${bLabel}</span>
+    </span>
+  </div>`;
+}
+
+// --- Trends rendering ---
+function renderTrends() {
+  destroyCharts();
+  const container = document.getElementById('trends-content');
+  const allPlayers = Object.keys(TREND_DATA);
+  const players = allPlayers.filter(n => selectedTrendPlayers.has(n));
+
+  if (players.length === 0) {
+    container.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:3rem">No trend data available. Select at least one player.</p>';
+    return;
+  }
+
+  // Summary cards
+  let html = '<div class="summary-cards">';
+  html += `<div class="summary-card"><div class="label">Games Analyzed</div><div class="value">${GAME_DATA.length}</div></div>`;
+  players.forEach(name => {
+    const t = TREND_DATA[name];
+    const feudals = t.feudal_times.filter(x => x != null);
+    const bestFeudal = feudals.length ? Math.min(...feudals) : null;
+    const avgAPM = t.apm.length ? (t.apm.reduce((a,b) => a+b, 0) / t.apm.length).toFixed(0) : 'N/A';
+    const wins = t.wins ? t.wins.filter(w => w === true).length : 0;
+    const losses = t.wins ? t.wins.filter(w => w === false).length : 0;
+    const totalDecided = wins + losses;
+    const winRate = totalDecided > 0 ? `${Math.round(wins / totalDecided * 100)}%` : 'N/A';
+    html += `<div class="summary-card">
+      <div class="label">${name}</div>
+      <div class="value">${t.games.length} games</div>
+      <div class="detail">Win Rate: <span style="color:${wins > losses ? 'var(--green)' : wins < losses ? 'var(--red)' : 'var(--text-secondary)'}">${winRate}</span> (${wins}W ${losses}L)</div>
+      <div class="detail">Best Feudal: ${formatTime(bestFeudal)}</div>
+      <div class="detail">Avg APM: ${avgAPM}</div>
+    </div>`;
+  });
+  html += '</div>';
+
+  // Charts — isTime is explicit per config, not derived from key name
+  const chartConfigs = [
+    { id: 'feudal-trend', title: 'Feudal Age Times', key: 'feudal_times', isTime: true, lower_is_better: true },
+    { id: 'castle-trend', title: 'Castle Age Times', key: 'castle_times', isTime: true, lower_is_better: true },
+    { id: 'imperial-trend', title: 'Imperial Age Times', key: 'imperial_times', isTime: true, lower_is_better: true },
+    { id: 'vil15-trend', title: 'Villagers at 15 min', key: 'villagers_at_15min', isTime: false, lower_is_better: false },
+    { id: 'vil30-trend', title: 'Villagers at 30 min', key: 'villagers_at_30min', isTime: false, lower_is_better: false },
+    { id: 'vil-castle-trend', title: 'Villagers at Castle Age', key: 'villagers_at_castle', isTime: false, lower_is_better: false },
+    { id: 'apm-trend', title: 'APM Over Games', key: 'apm', isTime: false, lower_is_better: false },
+    { id: 'total-vil-trend', title: 'Total Villagers Produced', key: 'total_villagers', isTime: false, lower_is_better: false },
+    { id: 'idle-tc-trend', title: 'Idle TC (first 20min)', key: 'idle_tc_early', isTime: true, lower_is_better: true },
+    { id: 'loom-trend', title: 'Loom Time', key: 'loom_time', isTime: true, lower_is_better: true },
+    { id: 'wheelbarrow-trend', title: 'Wheelbarrow Time', key: 'wheelbarrow_time', isTime: true, lower_is_better: true },
+    { id: 'first-mil-trend', title: 'First Military Unit Time', key: 'first_military', isTime: true, lower_is_better: true },
+    { id: 'total-mil-trend', title: 'Total Military Produced', key: 'total_military', isTime: false, lower_is_better: false },
+    { id: 'final-res-trend', title: 'Final Resources', key: 'final_resources', isTime: false, lower_is_better: false },
+    { id: 'peak-res-trend', title: 'Peak Resources', key: 'peak_resources', isTime: false, lower_is_better: false },
+    { id: 'final-obj-trend', title: 'Final Units + Buildings', key: 'final_objects', isTime: false, lower_is_better: false },
+    { id: 'peak-obj-trend', title: 'Peak Units + Buildings', key: 'peak_objects', isTime: false, lower_is_better: false },
+    { id: 'duration-trend', title: 'Game Duration (min)', key: 'game_durations', isTime: false, lower_is_better: false },
+  ];
+
+  html += '<div class="grid grid-2">';
+  chartConfigs.forEach(cfg => {
+    html += `<div class="card"><h3>${cfg.title}</h3><div class="chart-container"><canvas id="${cfg.id}"></canvas></div></div>`;
+  });
+  html += '</div>';
+
+  container.innerHTML = html;
+
+  // Build date lookup: sort_date → display_date from GAME_DATA
+  const dateLookup = {};
+  GAME_DATA.forEach(g => {
+    const sd = g.metadata.game_date;
+    const dd = g.metadata.game_date_display;
+    if (sd && dd) dateLookup[sd] = dd;
+  });
+
+  // Find the longest game list across filtered players for x-axis labels
+  let maxGames = 0;
+  players.forEach(name => { maxGames = Math.max(maxGames, TREND_DATA[name].games.length); });
+  const xLabels = Array.from({length: maxGames}, (_, i) => `Game ${i+1}`);
+
+  // Render trend charts
+  chartConfigs.forEach((cfg, ci) => {
+    const canvas = document.getElementById(cfg.id);
+    if (!canvas) return;
+    const datasets = [];
+    players.forEach((name, pi) => {
+      const t = TREND_DATA[name];
+      const data = t[cfg.key].map(v => {
+        if (v == null) return null;
+        if (cfg.isTime) return v / 60; // seconds → minutes
+        return v;
+      });
+      datasets.push({
+        label: name,
+        data: data,
+        borderColor: PLAYER_COLORS[pi % PLAYER_COLORS.length],
+        backgroundColor: PLAYER_COLORS[pi % PLAYER_COLORS.length] + '33',
+        tension: 0.3,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true,
+      });
+    });
+
+    const chart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: xLabels,
+        datasets: datasets,
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top', labels: { boxWidth: 12, padding: 8 } },
+          tooltip: {
+            callbacks: {
+              title: function(items) {
+                if (!items.length) return '';
+                const di = items[0].dataIndex;
+                const gameLabel = `Game ${di + 1}`;
+                // Try to find game date from first player's trend data
+                for (const name of players) {
+                  const gd = TREND_DATA[name].games[di];
+                  if (gd && dateLookup[gd]) return `${gameLabel} — ${dateLookup[gd]}`;
+                  if (gd) {
+                    // Format sort date on the fly: "2026.04.03" → "4/3"
+                    const parts = gd.split('.');
+                    if (parts.length === 3) return `${gameLabel} — ${parseInt(parts[1])}/${parseInt(parts[2])}`;
+                  }
+                }
+                return gameLabel;
+              },
+              label: function(ctx) {
+                const v = ctx.parsed.y;
+                if (v == null) return `${ctx.dataset.label}: N/A`;
+                if (cfg.isTime) return `${ctx.dataset.label}: ${formatTime(v * 60)}`;
+                return `${ctx.dataset.label}: ${v}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { ticks: { font: { size: 10 } } },
+          y: {
+            beginAtZero: !cfg.isTime,
+            reverse: cfg.lower_is_better && cfg.isTime,
+            title: { display: true, text: cfg.isTime ? 'Minutes' : cfg.title },
+            ticks: cfg.isTime ? {
+              callback: v => formatTime(v * 60)
+            } : {}
+          }
+        }
+      }
+    });
+    activeCharts.push(chart);
+  });
+}
+
+// Init
+initGameSelector();
+</script>
+</body>
+</html>
