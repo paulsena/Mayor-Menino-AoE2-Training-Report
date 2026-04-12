@@ -551,6 +551,7 @@ function initGameSelector() {
   buildPlayerFilter('trends-player-filter', [...allHumanPlayers], selectedTrendPlayers, () => renderTrends());
 
   if (GAME_DATA.length > 0) {
+    currentGameIdx = 0;
     updateGamePlayerFilter(0);
     renderSingleGame(0);
   }

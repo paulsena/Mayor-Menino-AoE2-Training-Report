@@ -450,6 +450,7 @@ function toggleSection(sectionId) {
 let currentGameIdx = 0;
 let selectedPlayers = new Set();
 let selectedTrendPlayers = new Set();
+let allHumanPlayers = new Set();
 
 // Load data and initialize
 async function loadData() {
@@ -475,7 +476,7 @@ function initApp() {
   document.getElementById('loading-overlay').style.display = 'none';
 
   // Collect all human player names across all games
-  const allHumanPlayers = new Set();
+  allHumanPlayers.clear();
   GAME_DATA.forEach(g => g.players.filter(p => p.is_human).forEach(p => allHumanPlayers.add(p.name)));
   allHumanPlayers.forEach(n => { selectedPlayers.add(n); selectedTrendPlayers.add(n); });
 
@@ -550,6 +551,7 @@ function initGameSelector() {
   buildPlayerFilter('trends-player-filter', [...allHumanPlayers], selectedTrendPlayers, () => renderTrends());
 
   if (GAME_DATA.length > 0) {
+    currentGameIdx = 0;
     updateGamePlayerFilter(0);
     renderSingleGame(0);
   }
