@@ -964,7 +964,7 @@ function renderTrends() {
     </div>
     <div class="section-content">
       ${ageGradeLegend}
-      <div class="grid grid-2">
+      <div class="grid grid-wide">
         <div class="card"><h3>Feudal Age Times</h3><div class="chart-container"><canvas id="feudal-trend"></canvas></div></div>
         <div class="card"><h3>Castle Age Times</h3><div class="chart-container"><canvas id="castle-trend"></canvas></div></div>
         <div class="card"><h3>Imperial Age Times</h3><div class="chart-container"><canvas id="imperial-trend"></canvas></div></div>
@@ -1139,7 +1139,7 @@ function renderTrends() {
   // Flatten for chart rendering later (include age times charts)
   const chartConfigs = [...ageTimesCharts, ...chartGroups.flatMap(g => g.charts)];
 
-  // Render grouped sections
+  // Render grouped sections (line charts are full width)
   chartGroups.forEach(group => {
     html += `<div class="section" id="${group.id}">
       <div class="section-header" onclick="toggleSection('${group.id}')">
@@ -1147,7 +1147,7 @@ function renderTrends() {
         <h2>${group.title}</h2>
       </div>
       <div class="section-content">
-        <div class="grid grid-2">`;
+        <div class="grid grid-wide">`;
     group.charts.forEach(cfg => {
       html += `<div class="card"><h3>${cfg.title}</h3><div class="chart-container"><canvas id="${cfg.id}"></canvas></div></div>`;
     });
@@ -1189,7 +1189,8 @@ function renderTrends() {
     // For each data key, create aligned array
     const keys = ['feudal_times', 'castle_times', 'imperial_times', 'villagers_at_15min',
                   'villagers_at_30min', 'villagers_at_castle', 'total_villagers', 'apm',
-                  'idle_tc_early', 'first_military', 'total_military', 'game_durations', 'wins'];
+                  'idle_tc_early', 'first_military', 'total_military', 'game_durations', 'wins',
+                  'final_resources', 'peak_resources', 'final_objects', 'peak_objects'];
     keys.forEach(key => {
       if (!t[key]) return;
       const aligned = new Array(masterGameList.length).fill(null);

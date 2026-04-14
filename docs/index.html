@@ -149,7 +149,7 @@ body {
 @media (max-width: 1200px) { .grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 768px) { .grid-3 { grid-template-columns: 1fr; } }
 
-/* Player columns layout â€” grid ensures cards align across players */
+/* Player columns layout — grid ensures cards align across players */
 .players-columns {
   display: grid;
   gap: 0.75rem;
@@ -953,9 +953,9 @@ function renderTrends() {
   // --- Age-Up Times Over Games Section (rendered early) ---
   // Benchmarks are for COMPLETION time (when you reach the age)
   const ageGradeLegend = `<div style="display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted)">
-    <div><strong>Feudal:</strong> <span style="color:#22c55e">Excellent &lt;10:10</span> Â· <span style="color:#84cc16">Great &lt;11:10</span> Â· <span style="color:#eab308">Good &lt;12:10</span> Â· <span style="color:#f97316">Average &lt;14:10</span> Â· <span style="color:#ef4444">Needs Work 14:10+</span></div>
-    <div><strong>Castle:</strong> <span style="color:#22c55e">Excellent &lt;18:40</span> Â· <span style="color:#84cc16">Great &lt;20:40</span> Â· <span style="color:#eab308">Good &lt;23:40</span> Â· <span style="color:#f97316">Average &lt;27:40</span> Â· <span style="color:#ef4444">Needs Work 27:40+</span></div>
-    <div><strong>Imperial:</strong> <span style="color:#22c55e">Excellent &lt;33:10</span> Â· <span style="color:#84cc16">Great &lt;38:10</span> Â· <span style="color:#eab308">Good &lt;43:10</span> Â· <span style="color:#f97316">Average &lt;53:10</span> Â· <span style="color:#ef4444">Needs Work 53:10+</span></div>
+    <div><strong>Feudal:</strong> <span style="color:#22c55e">Excellent &lt;10:10</span> · <span style="color:#84cc16">Great &lt;11:10</span> · <span style="color:#eab308">Good &lt;12:10</span> · <span style="color:#f97316">Average &lt;14:10</span> · <span style="color:#ef4444">Needs Work 14:10+</span></div>
+    <div><strong>Castle:</strong> <span style="color:#22c55e">Excellent &lt;18:40</span> · <span style="color:#84cc16">Great &lt;20:40</span> · <span style="color:#eab308">Good &lt;23:40</span> · <span style="color:#f97316">Average &lt;27:40</span> · <span style="color:#ef4444">Needs Work 27:40+</span></div>
+    <div><strong>Imperial:</strong> <span style="color:#22c55e">Excellent &lt;33:10</span> · <span style="color:#84cc16">Great &lt;38:10</span> · <span style="color:#eab308">Good &lt;43:10</span> · <span style="color:#f97316">Average &lt;53:10</span> · <span style="color:#ef4444">Needs Work 53:10+</span></div>
   </div>`;
   html += `<div class="section" id="section-age-times">
     <div class="section-header" onclick="toggleSection('section-age-times')">
@@ -964,7 +964,7 @@ function renderTrends() {
     </div>
     <div class="section-content">
       ${ageGradeLegend}
-      <div class="grid grid-2">
+      <div class="grid grid-wide">
         <div class="card"><h3>Feudal Age Times</h3><div class="chart-container"><canvas id="feudal-trend"></canvas></div></div>
         <div class="card"><h3>Castle Age Times</h3><div class="chart-container"><canvas id="castle-trend"></canvas></div></div>
         <div class="card"><h3>Imperial Age Times</h3><div class="chart-container"><canvas id="imperial-trend"></canvas></div></div>
@@ -1139,7 +1139,7 @@ function renderTrends() {
   // Flatten for chart rendering later (include age times charts)
   const chartConfigs = [...ageTimesCharts, ...chartGroups.flatMap(g => g.charts)];
 
-  // Render grouped sections
+  // Render grouped sections (line charts are full width)
   chartGroups.forEach(group => {
     html += `<div class="section" id="${group.id}">
       <div class="section-header" onclick="toggleSection('${group.id}')">
@@ -1147,7 +1147,7 @@ function renderTrends() {
         <h2>${group.title}</h2>
       </div>
       <div class="section-content">
-        <div class="grid grid-2">`;
+        <div class="grid grid-wide">`;
     group.charts.forEach(cfg => {
       html += `<div class="card"><h3>${cfg.title}</h3><div class="chart-container"><canvas id="${cfg.id}"></canvas></div></div>`;
     });
@@ -1189,7 +1189,8 @@ function renderTrends() {
     // For each data key, create aligned array
     const keys = ['feudal_times', 'castle_times', 'imperial_times', 'villagers_at_15min',
                   'villagers_at_30min', 'villagers_at_castle', 'total_villagers', 'apm',
-                  'idle_tc_early', 'first_military', 'total_military', 'game_durations', 'wins'];
+                  'idle_tc_early', 'first_military', 'total_military', 'game_durations', 'wins',
+                  'final_resources', 'peak_resources', 'final_objects', 'peak_objects'];
     keys.forEach(key => {
       if (!t[key]) return;
       const aligned = new Array(masterGameList.length).fill(null);
@@ -1223,7 +1224,7 @@ function renderTrends() {
       if (!aligned || !aligned[cfg.key]) return;
       const data = aligned[cfg.key].map(v => {
         if (v == null) return null;
-        if (cfg.isTime) return v / 60; // seconds â†’ minutes
+        if (cfg.isTime) return v / 60; // seconds → minutes
         return v;
       });
       datasets.push({
@@ -1281,7 +1282,7 @@ function renderTrends() {
                 // Get date from master game list
                 const masterGame = masterGameList[di];
                 if (masterGame && masterGame.date) {
-                  return `${gameLabel} â€” ${masterGame.date}`;
+                  return `${gameLabel} — ${masterGame.date}`;
                 }
                 return gameLabel;
               },
