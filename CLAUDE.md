@@ -6,6 +6,15 @@ Python tool that parses AoE2 DE `.aoe2record` replay files and generates an HTML
 
 **Entry point:** `python analyze.py` (auto-detects savegame folder)
 
+## Virtual Environment (IMPORTANT)
+
+**Always use the venv** - it contains a patched version of the mgz library. Run commands with:
+```bash
+venv/Scripts/python analyze.py
+```
+
+Do NOT `pip install mgz` globally - always work within the venv which has the patches already applied.
+
 ## Architecture
 
 - `parser.py` - Parses replay files using `mgz.fast` module. Extracts players, actions, timeseries (resource/object snapshots), and winner/loser detection.

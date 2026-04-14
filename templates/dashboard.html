@@ -972,64 +972,82 @@ function renderTrends() {
     </div>
   </div>`;
 
-  // --- Age-Up Time Consistency Section ---
+  // --- Age-Up Time Progress Section ---
   html += `<div class="section" id="section-consistency">
     <div class="section-header" onclick="toggleSection('section-consistency')">
       <span class="section-toggle"></span>
-      <h2>Age-Up Time Consistency</h2>
+      <h2>Age-Up Progress</h2>
     </div>
     <div class="section-content">
       <div class="grid grid-2">`;
+
   players.forEach((name, pi) => {
     const t = TREND_DATA[name];
+    // Get times in chronological order (oldest first, as stored)
     const feudals = t.feudal_times.filter(x => x != null);
     const castles = t.castle_times.filter(x => x != null);
+    const imperials = t.imperial_times.filter(x => x != null);
 
-    // Calculate standard deviation
-    const stdDev = (arr) => {
-      if (arr.length < 2) return null;
-      const mean = arr.reduce((a,b) => a+b, 0) / arr.length;
-      const variance = arr.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / arr.length;
-      return Math.sqrt(variance);
+    const getStats = (times) => {
+      if (!times.length) return null;
+      const best = Math.min(...times);
+      const avg = times.reduce((a, b) => a + b, 0) / times.length;
+      const last5 = times.slice(-5);
+      const last5Avg = last5.reduce((a, b) => a + b, 0) / last5.length;
+      // Trend: negative = improving (faster), positive = slower
+      const diff = last5Avg - avg;
+      const trendSec = Math.abs(diff);
+      let trend, trendColor;
+      if (times.length < 3) {
+        trend = '-';
+        trendColor = 'var(--text-muted)';
+      } else if (diff < -10) {
+        trend = `\u2191 ${formatTime(trendSec)}`;
+        trendColor = 'var(--green)';
+      } else if (diff > 10) {
+        trend = `\u2193 ${formatTime(trendSec)}`;
+        trendColor = 'var(--red)';
+      } else {
+        trend = '\u2194 stable';
+        trendColor = 'var(--text-muted)';
+      }
+      return { best, avg, last5Avg, trend, trendColor, n: times.length };
     };
 
-    const feudalStd = stdDev(feudals);
-    const castleStd = stdDev(castles);
-    const feudalAvg = feudals.length ? feudals.reduce((a,b) => a+b, 0) / feudals.length : null;
-    const castleAvg = castles.length ? castles.reduce((a,b) => a+b, 0) / castles.length : null;
-
-    // Consistency rating based on std dev (lower = more consistent)
-    const getConsistencyRating = (std) => {
-      if (std === null) return { label: 'N/A', color: 'var(--text-muted)' };
-      if (std < 30) return { label: 'Very Consistent', color: 'var(--green)' };
-      if (std < 60) return { label: 'Consistent', color: '#84cc16' };
-      if (std < 90) return { label: 'Moderate', color: 'var(--yellow)' };
-      if (std < 120) return { label: 'Variable', color: 'var(--orange)' };
-      return { label: 'Inconsistent', color: 'var(--red)' };
+    const renderAgeRow = (label, stats) => {
+      if (!stats) return `<div class="stat-row"><span class="stat-label">${label}</span><span class="stat-value" style="color:var(--text-muted)">No data</span></div>`;
+      return `
+        <div style="margin-bottom:0.75rem">
+          <div style="font-weight:600;color:var(--accent);margin-bottom:0.25rem">${label}</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem;font-size:0.85rem">
+            <div style="text-align:center">
+              <div style="color:var(--text-muted);font-size:0.7rem">BEST</div>
+              <div style="color:var(--green);font-weight:600">${formatTime(stats.best)}</div>
+            </div>
+            <div style="text-align:center">
+              <div style="color:var(--text-muted);font-size:0.7rem">AVG</div>
+              <div style="font-weight:600">${formatTime(stats.avg)}</div>
+            </div>
+            <div style="text-align:center">
+              <div style="color:var(--text-muted);font-size:0.7rem">LAST 5 AVG</div>
+              <div style="font-weight:600">${formatTime(stats.last5Avg)}</div>
+            </div>
+            <div style="text-align:center">
+              <div style="color:var(--text-muted);font-size:0.7rem">LAST 5 vs ALL</div>
+              <div style="color:${stats.trendColor};font-weight:600">${stats.trend}</div>
+            </div>
+          </div>
+        </div>`;
     };
-
-    const feudalRating = getConsistencyRating(feudalStd);
-    const castleRating = getConsistencyRating(castleStd);
 
     html += `<div class="card">
       <h3>${name}</h3>
-      <div class="stat-row">
-        <span class="stat-label">Feudal Age Time</span>
-        <span class="stat-value">
-          <span style="color:${feudalRating.color}">${feudalRating.label}</span>
-          ${feudalStd !== null ? `<span style="color:var(--text-muted);font-size:0.75rem;margin-left:0.5rem">(avg ${formatTime(feudalAvg)} \u00b1${formatTime(feudalStd)})</span>` : ''}
-        </span>
-      </div>
-      <div class="stat-row">
-        <span class="stat-label">Castle Age Time</span>
-        <span class="stat-value">
-          <span style="color:${castleRating.color}">${castleRating.label}</span>
-          ${castleStd !== null ? `<span style="color:var(--text-muted);font-size:0.75rem;margin-left:0.5rem">(avg ${formatTime(castleAvg)} \u00b1${formatTime(castleStd)})</span>` : ''}
-        </span>
-      </div>
-      <div style="margin-top:0.5rem;color:var(--text-muted);font-size:0.75rem">Standard deviation of age-up times. Lower = more consistent execution across games.</div>
+      ${renderAgeRow('Feudal Age', getStats(feudals))}
+      ${renderAgeRow('Castle Age', getStats(castles))}
+      ${renderAgeRow('Imperial Age', getStats(imperials))}
     </div>`;
   });
+
   html += `</div>
     </div>
   </div>`;
@@ -1466,6 +1484,7 @@ function renderTrends() {
       activeCharts.push(barChart);
     }
   });
+
 }
 
   // Init game selector (inside initUI)
