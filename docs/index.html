@@ -532,7 +532,9 @@ function updateGamePlayerFilter(idx) {
 // --- Game selector dropdown ---
 function initGameSelector() {
   const dropdown = document.getElementById('game-dropdown');
-  GAME_DATA.forEach((g, i) => {
+  // Display newest games first in dropdown (reverse order), but keep data index
+  for (let i = GAME_DATA.length - 1; i >= 0; i--) {
+    const g = GAME_DATA[i];
     const opt = document.createElement('option');
     opt.value = i;
     const dateDisplay = g.metadata.game_date_display || g.metadata.game_date || `Game ${i+1}`;
@@ -541,7 +543,7 @@ function initGameSelector() {
     const humans = g.players.filter(p => p.is_human).map(p => p.name).join(', ');
     opt.textContent = `${dateDisplay} - ${map} (${dur}m) ${humans}`;
     dropdown.appendChild(opt);
-  });
+  }
   dropdown.addEventListener('change', () => {
     currentGameIdx = parseInt(dropdown.value);
     updateGamePlayerFilter(currentGameIdx);
@@ -551,9 +553,11 @@ function initGameSelector() {
   buildPlayerFilter('trends-player-filter', [...allHumanPlayers], selectedTrendPlayers, () => renderTrends());
 
   if (GAME_DATA.length > 0) {
-    currentGameIdx = 0;
-    updateGamePlayerFilter(0);
-    renderSingleGame(0);
+    // Default to newest game (last in array since sorted oldest-first)
+    currentGameIdx = GAME_DATA.length - 1;
+    dropdown.value = currentGameIdx;
+    updateGamePlayerFilter(currentGameIdx);
+    renderSingleGame(currentGameIdx);
   }
 }
 

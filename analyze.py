@@ -1,6 +1,7 @@
 """AoE2 Replay Analyzer — CLI entry point."""
 
 import glob
+import json
 import os
 import sys
 
@@ -8,6 +9,9 @@ from parser import parse_replay
 from stats import compute_game_stats, compute_trend_stats
 from dashboard import generate_dashboard
 
+
+# Cache file for incremental analysis
+CACHE_FILE = os.path.join("docs", "data", "cache.json")
 
 # Default AoE2 DE directory
 USERNAME = os.environ.get("USERNAME", os.environ.get("USER", "pauls"))
@@ -62,6 +66,24 @@ def find_replays(path=None, include_sp=False):
     return files
 
 
+def load_cache():
+    """Load the analysis cache from disk."""
+    if os.path.exists(CACHE_FILE):
+        try:
+            with open(CACHE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return {}
+    return {}
+
+
+def save_cache(cache):
+    """Save the analysis cache to disk."""
+    os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
+    with open(CACHE_FILE, "w", encoding="utf-8") as f:
+        json.dump(cache, f)
+
+
 def print_help():
     print("""AoE2 Replay Analyzer — Generate an HTML dashboard from recorded games.
 
@@ -72,6 +94,7 @@ Options:
   --dir <path>       Directory containing .aoe2record files
   --output <path>    Output HTML file (default: docs/index.html)
   --include-sp       Include single-player replays (skipped by default)
+  --full-scan        Re-analyze all replays (ignore cache)
   --help             Show this help message
 
 Examples:
@@ -79,6 +102,7 @@ Examples:
   python analyze.py --dir "C:\\path\\to\\replays"   Analyze replays in a specific folder
   python analyze.py game.aoe2record              Analyze a single replay file
   python analyze.py --include-sp                 Include single-player games too
+  python analyze.py --full-scan                  Force re-parse all replays
 
 If no directory or file is specified, the tool auto-detects your AoE2 DE
 savegame folder at:
@@ -93,6 +117,7 @@ def main():
     args = sys.argv[1:]
 
     include_sp = False
+    full_scan = False
     for i, arg in enumerate(args):
         if arg in ("--help", "-h"):
             print_help()
@@ -103,6 +128,8 @@ def main():
             output = args[i + 1]
         elif arg == "--include-sp":
             include_sp = True
+        elif arg == "--full-scan":
+            full_scan = True
         elif not arg.startswith("--") and arg.endswith(".aoe2record"):
             path = arg
 
@@ -122,14 +149,38 @@ def main():
 
     print(f"Found {len(replays)} replay(s)")
 
+    # Load cache for incremental analysis
+    cache = {} if full_scan else load_cache()
+    if full_scan:
+        print("Full scan mode: re-analyzing all replays")
+
     all_game_stats = []
+    new_cache = {}
+    cached_count = 0
+    parsed_count = 0
+
     for i, replay_path in enumerate(replays):
         basename = os.path.basename(replay_path)
+        mtime = os.path.getmtime(replay_path)
+        cache_key = basename
+
+        # Check if we have a valid cached result
+        cached = cache.get(cache_key)
+        if cached and cached.get("mtime") == mtime:
+            # Use cached stats
+            all_game_stats.append(cached["stats"])
+            new_cache[cache_key] = cached
+            cached_count += 1
+            continue
+
+        # Parse the replay
         print(f"  [{i+1}/{len(replays)}] Parsing: {basename}...", end=" ", flush=True)
         try:
             parsed = parse_replay(replay_path)
             game_stats = compute_game_stats(parsed)
             all_game_stats.append(game_stats)
+            new_cache[cache_key] = {"mtime": mtime, "stats": game_stats}
+            parsed_count += 1
 
             # Print summary
             humans = [p for p in game_stats["players"] if p["is_human"]]
@@ -142,12 +193,21 @@ def main():
         except Exception as e:
             print(f"ERROR: {e}")
 
+    # Save updated cache
+    save_cache(new_cache)
+
+    if cached_count > 0:
+        print(f"Used {cached_count} cached result(s), parsed {parsed_count} new replay(s)")
+
     if not all_game_stats:
         print("No replays could be parsed.")
         sys.exit(1)
 
-    # Sort by game date
-    all_game_stats.sort(key=lambda g: g["metadata"].get("game_date") or "", reverse=True)
+    # Sort by game date and time (oldest first for trends: Game 1 = oldest)
+    # Use game_date (YYYY.MM.DD format) as primary, de_timestamp for same-day ordering
+    all_game_stats.sort(
+        key=lambda g: (g["metadata"].get("game_date") or "", g["metadata"].get("de_timestamp") or 0),
+    )
 
     # Compute trends
     trend_stats = compute_trend_stats(all_game_stats)

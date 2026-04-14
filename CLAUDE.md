@@ -193,6 +193,13 @@ In the main `parse` function, wrap scenario/lobby parsing with fallback:
             )
 ```
 
+## Incremental Analysis
+
+The analyzer caches parsed results in `docs/data/cache.json` (keyed by filename + mtime). On normal runs, only new or modified replay files are parsed.
+
+- **Default run**: Uses cache, only parses new/modified files
+- **`--full-scan`**: Ignores cache, re-parses all replays (use after updating parser code or mgz patches)
+
 ## Game speed notes
 
 Replay timestamps are in **real-time milliseconds**. To convert to in-game time: `game_seconds = real_ms / 1000 * speed`. Common speeds: 1.5 = Normal, 1.7 = Fast (most common for this user's replays), 2.0 = Very Fast.

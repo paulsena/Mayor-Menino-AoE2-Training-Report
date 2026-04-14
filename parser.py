@@ -213,17 +213,40 @@ def parse_replay(filepath):
         if members & resigned_players:
             losing_teams.add(tid)
 
+    # Attach timeseries to each player first (needed for fallback detection)
+    for p in players:
+        p["timeseries"] = timeseries.get(p["number"], [])
+
+    # Fallback: detect losers by checking if their objects were destroyed
+    # A player likely lost if their final object count is very low or dropped significantly
+    if not resigned_players:
+        defeated_players = set()
+        for p in players:
+            ts = p.get("timeseries", [])
+            if len(ts) >= 2:
+                peak_objects = max(entry.get("total_objects", 0) for entry in ts)
+                final_objects = ts[-1].get("total_objects", 0)
+                # Player lost if: final objects < 50 AND dropped by more than 70% from peak
+                if peak_objects > 100 and final_objects < 50 and final_objects < peak_objects * 0.3:
+                    defeated_players.add(p["number"])
+
+        # Mark teams with defeated players as losing
+        for tid, members in teams.items():
+            if members & defeated_players:
+                losing_teams.add(tid)
+
+        # Only set winners if we detected at least one loser
+        if defeated_players:
+            resigned_players = defeated_players  # Use for winner logic below
+
     for p in players:
         tid = p.get("team_id", -1)
         if resigned_players:
-            # Someone resigned, so we can determine outcome
+            # Someone resigned or was defeated, so we can determine outcome
             p["winner"] = tid not in losing_teams
         else:
-            # No resignations — game may have ended by other means
+            # No resignations or defeats detected
             p["winner"] = None
-
-        # Attach timeseries to player
-        p["timeseries"] = timeseries.get(p["number"], [])
 
     # Extract date from filename if possible
     game_date, game_date_display = _extract_date_from_filename(filepath)
@@ -244,6 +267,7 @@ def parse_replay(filepath):
         "filename": os.path.basename(filepath),
         "game_date": game_date,
         "game_date_display": game_date_display,
+        "de_timestamp": de_timestamp,
         "save_version": h.get("save_version"),
         "game_version": h.get("game_version"),
         "map_id": map_id,

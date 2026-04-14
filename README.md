@@ -81,7 +81,16 @@ python analyze.py --include-sp
 
 # Specify output file (default: docs/dashboard.html)
 python analyze.py --output my_dashboard.html
+
+# Force re-analyze all replays (ignores cache)
+python analyze.py --full-scan
 ```
+
+### Incremental Analysis
+
+By default, the analyzer caches parsed results in `docs/data/cache.json`. On subsequent runs, only new or modified replay files are parsed. This significantly speeds up analysis when you have many replays.
+
+Use `--full-scan` to force re-parsing all replays (useful after updating parser code or patches).
 
 ### Options
 
@@ -90,6 +99,7 @@ python analyze.py --output my_dashboard.html
 | `--dir <path>` | Directory containing `.aoe2record` files |
 | `--output <path>` | Output HTML file (default: `docs/dashboard.html`) |
 | `--include-sp` | Include single-player replays (skipped by default) |
+| `--full-scan` | Re-analyze all replays, ignoring cache |
 | `--help` | Show help message |
 
 ## Output
