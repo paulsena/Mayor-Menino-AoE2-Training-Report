@@ -5,7 +5,8 @@
       "WebFetch(domain:pypi.org)",
       "WebFetch(domain:github.com)",
       "Bash(ls /c/Users/pauls/Documents/Coding/aoe2/*.aoe2record)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(gh api:*)"
     ]
   }
 }
