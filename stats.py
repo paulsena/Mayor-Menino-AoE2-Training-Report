@@ -37,27 +37,28 @@ KEY_TECH_IDS = {
     875: "Gambesons",
 }
 
-# Benchmarks for skill assessment (times in seconds, normal speed)
+# Benchmarks for skill assessment (times in seconds, completion time)
+# These are when you REACH the age (research completes), matching online parsers
 BENCHMARKS = {
     "feudal_age": [
-        (480, "Excellent", "#22c55e"),   # < 8:00
-        (540, "Great", "#84cc16"),       # < 9:00
-        (600, "Good", "#eab308"),        # < 10:00
-        (720, "Average", "#f97316"),     # < 12:00
+        (610, "Excellent", "#22c55e"),   # < 10:10 (click < 8:00)
+        (670, "Great", "#84cc16"),       # < 11:10 (click < 9:00)
+        (730, "Good", "#eab308"),        # < 12:10 (click < 10:00)
+        (850, "Average", "#f97316"),     # < 14:10 (click < 12:00)
         (9999, "Needs Work", "#ef4444"),
     ],
     "castle_age": [
-        (960, "Excellent", "#22c55e"),   # < 16:00
-        (1080, "Great", "#84cc16"),      # < 18:00
-        (1260, "Good", "#eab308"),       # < 21:00
-        (1500, "Average", "#f97316"),    # < 25:00
+        (1120, "Excellent", "#22c55e"),  # < 18:40 (click < 16:00)
+        (1240, "Great", "#84cc16"),      # < 20:40 (click < 18:00)
+        (1420, "Good", "#eab308"),       # < 23:40 (click < 21:00)
+        (1660, "Average", "#f97316"),    # < 27:40 (click < 25:00)
         (9999, "Needs Work", "#ef4444"),
     ],
     "imperial_age": [
-        (1800, "Excellent", "#22c55e"),  # < 30:00
-        (2100, "Great", "#84cc16"),      # < 35:00
-        (2400, "Good", "#eab308"),       # < 40:00
-        (3000, "Average", "#f97316"),    # < 50:00
+        (1990, "Excellent", "#22c55e"),  # < 33:10 (click < 30:00)
+        (2290, "Great", "#84cc16"),      # < 38:10 (click < 35:00)
+        (2590, "Good", "#eab308"),       # < 43:10 (click < 40:00)
+        (3190, "Average", "#f97316"),    # < 53:10 (click < 50:00)
         (9999, "Needs Work", "#ef4444"),
     ],
 }
@@ -86,7 +87,8 @@ def compute_player_stats(actions, player_number, game_duration_ms, game_speed):
     """Compute all stats for a single player from action list.
 
     game_speed: the speed multiplier (1.0=slow, 1.5=normal, 1.7=fast, 2.0=very fast).
-    Times in the replay are in real-time ms. To convert to in-game time, multiply by speed.
+    Note: mgz timestamps are already in in-game time (ms), NOT real-time.
+    No speed conversion is needed for display.
     """
     player_actions = [a for a in actions if a.get("player_id") == player_number]
     all_player_actions = player_actions  # includes all action types
@@ -97,14 +99,19 @@ def compute_player_stats(actions, player_number, game_duration_ms, game_speed):
         if a.get("action_type") == "RESEARCH" and a.get("player_id") == player_number:
             tech_id = a.get("technology_id")
             if tech_id in AGE_TECH_IDS:
+                # Only record the FIRST research event for each age
+                # (subsequent events are likely double-clicks or re-queues)
+                if tech_id in age_ups:
+                    continue
                 # Time the research was STARTED (clicked)
                 click_time_ms = a["time_ms"]
-                # Research completion = click + research duration / speed
+                # Research completion = click + research duration
+                # (timestamps and durations are both in in-game time)
                 duration_ms = AGE_RESEARCH_DURATIONS.get(tech_id, 0)
-                completion_ms = click_time_ms + duration_ms / game_speed
+                completion_ms = click_time_ms + duration_ms
                 age_ups[tech_id] = {
-                    "click_time_s": round(click_time_ms / 1000 * game_speed, 1),
-                    "completion_time_s": round(completion_ms / 1000 * game_speed, 1),
+                    "click_time_s": round(click_time_ms / 1000, 1),
+                    "completion_time_s": round(completion_ms / 1000, 1),
                 }
 
     # --- Research timings ---
@@ -112,7 +119,7 @@ def compute_player_stats(actions, player_number, game_duration_ms, game_speed):
     for a in actions:
         if a.get("action_type") == "RESEARCH" and a.get("player_id") == player_number:
             tech_id = a.get("technology_id")
-            game_time_s = round(a["time_ms"] / 1000 * game_speed, 1)
+            game_time_s = round(a["time_ms"] / 1000, 1)
             tech_name = KEY_TECH_IDS.get(tech_id, get_tech_name(tech_id))
             researches.append({
                 "tech_id": tech_id,
@@ -131,7 +138,7 @@ def compute_player_stats(actions, player_number, game_duration_ms, game_speed):
             unit_id = a.get("unit_id")
             if unit_id == UNIT_VILLAGER:
                 amount = a.get("amount", 1)
-                game_time_s = round(a["time_ms"] / 1000 * game_speed, 1)
+                game_time_s = round(a["time_ms"] / 1000, 1)
                 villager_queues.append({
                     "time_s": game_time_s,
                     "amount": amount,
@@ -164,9 +171,9 @@ def compute_player_stats(actions, player_number, game_duration_ms, game_speed):
             continue
         if a.get("action_type") in ("QUEUE", "MULTIQUEUE", "DE_QUEUE"):
             if a.get("unit_id") == UNIT_VILLAGER:
-                tc_events.append(round(a["time_ms"] / 1000 * game_speed, 1))
+                tc_events.append(round(a["time_ms"] / 1000, 1))
         elif a.get("action_type") == "RESEARCH":
-            tc_events.append(round(a["time_ms"] / 1000 * game_speed, 1))
+            tc_events.append(round(a["time_ms"] / 1000, 1))
 
     tc_events.sort()
     idle_tc_s = 0
@@ -196,7 +203,7 @@ def compute_player_stats(actions, player_number, game_duration_ms, game_speed):
             if unit_id and unit_id != UNIT_VILLAGER:
                 unit_name = get_unit_name(unit_id)
                 amount = a.get("amount", 1)
-                game_time_s = round(a["time_ms"] / 1000 * game_speed, 1)
+                game_time_s = round(a["time_ms"] / 1000, 1)
                 if unit_name not in military_units:
                     military_units[unit_name] = {"count": 0, "first_time_s": game_time_s}
                 military_units[unit_name]["count"] += amount
@@ -208,15 +215,15 @@ def compute_player_stats(actions, player_number, game_duration_ms, game_speed):
     total_player_actions = len(player_actions)
     apm = round(total_player_actions / (game_duration_s / 60), 1) if game_duration_s > 0 else 0
 
-    # APM over time (2-minute windows)
+    # APM over time (2-minute windows, in in-game time)
     apm_over_time = []
     window_s = 120
-    max_time = game_duration_s * game_speed
+    game_duration_ingame_s = game_duration_ms / 1000
     t = 0
-    while t < max_time:
-        window_start = t / game_speed
-        window_end = (t + window_s) / game_speed
-        count = sum(1 for a in player_actions if window_start <= a["time_ms"] / 1000 < window_end)
+    while t < game_duration_ingame_s:
+        window_start_ms = t * 1000
+        window_end_ms = (t + window_s) * 1000
+        count = sum(1 for a in player_actions if window_start_ms <= a["time_ms"] < window_end_ms)
         apm_val = round(count / (window_s / 60), 1)
         apm_over_time.append({"time_s": t, "apm": apm_val})
         t += window_s
@@ -226,7 +233,7 @@ def compute_player_stats(actions, player_number, game_duration_ms, game_speed):
     for a in actions:
         if a.get("player_id") != player_number:
             continue
-        game_time_s = round(a["time_ms"] / 1000 * game_speed, 1)
+        game_time_s = round(a["time_ms"] / 1000, 1)
         atype = a.get("action_type")
         if atype in ("BUILD", "WALL"):
             build_id = a.get("building_id")
@@ -259,13 +266,18 @@ def compute_player_stats(actions, player_number, game_duration_ms, game_speed):
         return count + 3  # +3 starting villagers
 
     # --- Compile results ---
-    feudal_time = age_ups.get(TECH_FEUDAL_AGE, {}).get("click_time_s")
-    castle_time = age_ups.get(TECH_CASTLE_AGE, {}).get("click_time_s")
-    imperial_time = age_ups.get(TECH_IMPERIAL_AGE, {}).get("click_time_s")
+    # Use completion time (when you actually reach the age) to match online parsers
+    feudal_time = age_ups.get(TECH_FEUDAL_AGE, {}).get("completion_time_s")
+    castle_time = age_ups.get(TECH_CASTLE_AGE, {}).get("completion_time_s")
+    imperial_time = age_ups.get(TECH_IMPERIAL_AGE, {}).get("completion_time_s")
 
-    vils_at_feudal = _vils_at_time(feudal_time)
-    vils_at_castle = _vils_at_time(castle_time)
-    vils_at_imperial = _vils_at_time(imperial_time)
+    # Villager count at click time (before research completes)
+    feudal_click = age_ups.get(TECH_FEUDAL_AGE, {}).get("click_time_s")
+    castle_click = age_ups.get(TECH_CASTLE_AGE, {}).get("click_time_s")
+    imperial_click = age_ups.get(TECH_IMPERIAL_AGE, {}).get("click_time_s")
+    vils_at_feudal = _vils_at_time(feudal_click)
+    vils_at_castle = _vils_at_time(castle_click)
+    vils_at_imperial = _vils_at_time(imperial_click)
 
     return {
         "age_ups": {
@@ -313,10 +325,10 @@ def compute_player_stats(actions, player_number, game_duration_ms, game_speed):
     }
 
 
-def compute_timeseries_stats(timeseries, game_speed, villager_queues=None):
+def compute_timeseries_stats(timeseries, villager_queues=None):
     """Compute summary stats from player timeseries data.
 
-    Returns a dict with the timeseries points (converted to game time)
+    Returns a dict with the timeseries points (already in in-game time)
     and final snapshot values. Also computes villager count over time
     based on villager queue actions.
     """
@@ -354,7 +366,7 @@ def compute_timeseries_stats(timeseries, game_speed, villager_queues=None):
     peak_resources = 0
     peak_objects = 0
     for entry in timeseries:
-        game_time_s = round(entry["time_ms"] / 1000 * game_speed, 1)
+        game_time_s = round(entry["time_ms"] / 1000, 1)
         res = entry["total_resources"]
         obj = entry["total_objects"]
         vils = count_vils_at(game_time_s) if villager_queues else None
@@ -401,7 +413,7 @@ def compute_game_stats(parsed_replay):
         # Pass villager queues to compute villager count over time
         vil_queues = player_stats.get("villagers", {}).get("queues", [])
         ts_stats = compute_timeseries_stats(
-            player.get("timeseries", []), game_speed, vil_queues
+            player.get("timeseries", []), vil_queues
         )
 
         # Build player entry (exclude raw timeseries to keep output lean)
@@ -449,7 +461,6 @@ def compute_trend_stats(all_game_stats):
             "peak_resources": [],
             "peak_objects": [],
             "civs": [],  # Track civ usage for pie chart
-            "ai_difficulty": [],  # Track AI difficulty level
         }
 
         for gs in all_game_stats:
@@ -491,9 +502,6 @@ def compute_trend_stats(all_game_stats):
 
                 # Track civ usage
                 player_trend["civs"].append(p.get("civ_name", "Unknown"))
-
-                # Track AI difficulty
-                player_trend["ai_difficulty"].append(gs["metadata"].get("difficulty_id", -1))
 
         trends[name] = player_trend
 

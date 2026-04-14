@@ -202,4 +202,4 @@ The analyzer caches parsed results in `docs/data/cache.json` (keyed by filename 
 
 ## Game speed notes
 
-Replay timestamps are in **real-time milliseconds**. To convert to in-game time: `game_seconds = real_ms / 1000 * speed`. Common speeds: 1.5 = Normal, 1.7 = Fast (most common for this user's replays), 2.0 = Very Fast.
+Replay timestamps from mgz are already in **in-game milliseconds** (the time shown on the in-game clock). No speed conversion is needed for display. The speed value (1.5 = Normal, 1.7 = Fast, 2.0 = Very Fast) indicates how fast the game ran in real-world time, but timestamps already reflect in-game time.

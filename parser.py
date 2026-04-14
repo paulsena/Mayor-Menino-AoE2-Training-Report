@@ -33,7 +33,6 @@ for _ds_name in ["0", "100"]:
             _ds = json.load(_f)
             MAPS.update(_ds.get("maps", {}))
 # DE dataset takes priority (loaded second)
-DIFFICULTIES = _constants["difficulties"]
 
 # Player type constants
 PLAYER_TYPE_HUMAN = 2
@@ -275,8 +274,6 @@ def parse_replay(filepath):
         "duration_ms": time_ms,
         "duration_minutes": round(time_ms / 60_000, 1),
         "speed": h.get("metadata", {}).get("speed", 1.5),
-        "difficulty_id": h.get("de", {}).get("difficulty_id", -1),
-        "difficulty_name": DIFFICULTIES.get(str(h.get("de", {}).get("difficulty_id", -1)), "Unknown"),
         "population_limit": h.get("de", {}).get("population_limit", 200),
     }
 

@@ -597,7 +597,6 @@ function renderSingleGame(idx, skipFilterRebuild) {
     <div class="info-item"><span>Duration</span><span>${meta.duration_minutes} min</span></div>
     <div class="info-item"><span>Speed</span><span>${meta.speed?.toFixed(2) || '1.50'}</span></div>
     <div class="info-item"><span>Date</span><span>${dateDisplay}</span></div>
-    <div class="info-item"><span>AI Difficulty</span><span>${meta.difficulty_name || 'Unknown'}</span></div>
     <div class="info-item"><span>Pop Limit</span><span>${meta.population_limit || 200}</span></div>
   </div>`;
 
@@ -951,10 +950,11 @@ function renderTrends() {
   </div>`;
 
   // --- Age-Up Times Over Games Section (rendered early) ---
+  // Benchmarks are for COMPLETION time (when you reach the age)
   const ageGradeLegend = `<div style="display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted)">
-    <div><strong>Feudal:</strong> <span style="color:#22c55e">Excellent &lt;8:00</span> Â· <span style="color:#84cc16">Great &lt;9:00</span> Â· <span style="color:#eab308">Good &lt;10:00</span> Â· <span style="color:#f97316">Average &lt;12:00</span> Â· <span style="color:#ef4444">Needs Work 12:00+</span></div>
-    <div><strong>Castle:</strong> <span style="color:#22c55e">Excellent &lt;16:00</span> Â· <span style="color:#84cc16">Great &lt;18:00</span> Â· <span style="color:#eab308">Good &lt;21:00</span> Â· <span style="color:#f97316">Average &lt;25:00</span> Â· <span style="color:#ef4444">Needs Work 25:00+</span></div>
-    <div><strong>Imperial:</strong> <span style="color:#22c55e">Excellent &lt;30:00</span> Â· <span style="color:#84cc16">Great &lt;35:00</span> Â· <span style="color:#eab308">Good &lt;40:00</span> Â· <span style="color:#f97316">Average &lt;50:00</span> Â· <span style="color:#ef4444">Needs Work 50:00+</span></div>
+    <div><strong>Feudal:</strong> <span style="color:#22c55e">Excellent &lt;10:10</span> Â· <span style="color:#84cc16">Great &lt;11:10</span> Â· <span style="color:#eab308">Good &lt;12:10</span> Â· <span style="color:#f97316">Average &lt;14:10</span> Â· <span style="color:#ef4444">Needs Work 14:10+</span></div>
+    <div><strong>Castle:</strong> <span style="color:#22c55e">Excellent &lt;18:40</span> Â· <span style="color:#84cc16">Great &lt;20:40</span> Â· <span style="color:#eab308">Good &lt;23:40</span> Â· <span style="color:#f97316">Average &lt;27:40</span> Â· <span style="color:#ef4444">Needs Work 27:40+</span></div>
+    <div><strong>Imperial:</strong> <span style="color:#22c55e">Excellent &lt;33:10</span> Â· <span style="color:#84cc16">Great &lt;38:10</span> Â· <span style="color:#eab308">Good &lt;43:10</span> Â· <span style="color:#f97316">Average &lt;53:10</span> Â· <span style="color:#ef4444">Needs Work 53:10+</span></div>
   </div>`;
   html += `<div class="section" id="section-age-times">
     <div class="section-header" onclick="toggleSection('section-age-times')">
@@ -1107,13 +1107,9 @@ function renderTrends() {
       charts: [
         { id: 'apm-trend', title: 'APM Over Games', key: 'apm', isTime: false, lower_is_better: false },
         { id: 'duration-trend', title: 'Game Duration (min)', key: 'game_durations', isTime: false, lower_is_better: false },
-        { id: 'difficulty-trend', title: 'AI Difficulty', key: 'ai_difficulty', isTime: false, lower_is_better: false, isDifficulty: true },
       ]
     },
   ];
-
-  // Difficulty level names for y-axis
-  const DIFFICULTY_NAMES = {0: 'Easiest', 1: 'Standard', 2: 'Moderate', 3: 'Hard', 4: 'Hardest', 5: 'Extreme'};
 
   // Flatten for chart rendering later (include age times charts)
   const chartConfigs = [...ageTimesCharts, ...chartGroups.flatMap(g => g.charts)];
@@ -1208,7 +1204,6 @@ function renderTrends() {
                 const v = ctx.parsed.y;
                 if (v == null) return `${ctx.dataset.label}: N/A`;
                 if (cfg.isTime) return `${ctx.dataset.label}: ${formatTime(v * 60)}`;
-                if (cfg.isDifficulty) return `${ctx.dataset.label}: ${DIFFICULTY_NAMES[v] || v}`;
                 return `${ctx.dataset.label}: ${v}`;
               }
             }
@@ -1218,14 +1213,9 @@ function renderTrends() {
           x: { ticks: { font: { size: 10 } } },
           y: {
             beginAtZero: true,
-            min: cfg.isDifficulty ? 0 : undefined,
-            max: cfg.isDifficulty ? 5 : undefined,
-            title: { display: true, text: cfg.isTime ? 'Minutes' : (cfg.isDifficulty ? 'Difficulty' : cfg.title) },
+            title: { display: true, text: cfg.isTime ? 'Minutes' : cfg.title },
             ticks: cfg.isTime ? {
               callback: v => formatTime(v * 60)
-            } : cfg.isDifficulty ? {
-              stepSize: 1,
-              callback: v => DIFFICULTY_NAMES[v] || v
             } : {}
           }
         }
