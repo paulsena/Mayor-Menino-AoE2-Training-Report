@@ -456,8 +456,8 @@ let allHumanPlayers = new Set();
 async function loadData() {
   try {
     const [gamesRes, trendsRes] = await Promise.all([
-      fetch('data/games.json'),
-      fetch('data/trends.json')
+      fetch('data/games.json', { cache: 'no-store' }),
+      fetch('data/trends.json', { cache: 'no-store' })
     ]);
     GAME_DATA = await gamesRes.json();
     TREND_DATA = await trendsRes.json();
