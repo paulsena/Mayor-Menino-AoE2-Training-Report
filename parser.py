@@ -127,14 +127,29 @@ def parse_replay(filepath):
         # Parse the map ID — prefer DE rms_map_id over scenario map_id
         map_id = h.get("de", {}).get("rms_map_id") or h.get("scenario", {}).get("map_id", 0)
 
-        # For custom scenario maps, use the scenario filename as the map name
-        scenario_filename = h.get("scenario", {}).get("scenario_filename", b"")
-        if isinstance(scenario_filename, bytes):
-            scenario_filename = scenario_filename.decode("utf-8", errors="replace")
+        # For custom maps, check scenario_name (USER:SCENARIOS), rms_filename, or scenario_filename
         custom_map_name = None
-        if scenario_filename:
-            # Strip the file extension for display
-            custom_map_name = scenario_filename.replace(".aoe2scenario", "").strip()
+        # First priority: USER:SCENARIOS name (custom scenario with user-defined name)
+        scenario_name = h.get("de", {}).get("scenario_name")
+        if scenario_name:
+            custom_map_name = scenario_name.replace(".aoe2scenario", "").strip()
+        else:
+            # Second priority: Workshop RMS filename
+            rms_filename = h.get("de", {}).get("rms_filename")
+            if rms_filename:
+                # Strip .rms extension and clean up prefix (e.g., "ES_Paradise_Island.rms" -> "Paradise Island")
+                name = rms_filename.replace(".rms", "").strip()
+                # Remove common prefixes like "ES_", "ZR_", etc.
+                if len(name) > 3 and name[2] == "_":
+                    name = name[3:]
+                custom_map_name = name.replace("_", " ")
+            else:
+                # Third priority: scenario_filename from scenario section
+                scenario_filename = h.get("scenario", {}).get("scenario_filename", b"")
+                if isinstance(scenario_filename, bytes):
+                    scenario_filename = scenario_filename.decode("utf-8", errors="replace")
+                if scenario_filename:
+                    custom_map_name = scenario_filename.replace(".aoe2scenario", "").strip()
 
         # Parse body
         meta(f)

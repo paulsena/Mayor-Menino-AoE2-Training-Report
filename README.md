@@ -36,22 +36,33 @@ venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 ```
 
-### Required Patch for mgz Library
+### Required Patches for mgz Library
 
-The `mgz` library (PyPI version 1.8.51) does not support AoE2 DE save version 67.x+ out of the box. You must apply a patch after installing:
+The `mgz` library (PyPI version 1.8.51) does not support AoE2 DE save version 67.x+ out of the box. **Multiple patches are required** after installing.
 
-Edit `venv/Lib/site-packages/mgz/fast/header.py`, in the `parse_de` function's player loop (around line 469-471). Add a `de_string(data)` call for save version >= 67:
+**Do NOT install mgz from git** (`pip install git+https://github.com/happyleavesaoc/aoc-mgz.git`) - the git version breaks parsing for all current replays due to unrelated regressions.
 
-```python
-        if save >= 64.3:
-            data.read(4)
-        if save >= 67:          # <-- ADD THIS
-            de_string(data)     # <-- ADD THIS
+**Files to patch:**
+- `site-packages/mgz/util.py` - Add buffer size validation to `unpack()` function
+- `site-packages/mgz/fast/header.py` - Multiple changes for save version 67.x support
 
-        players.append(dict(
-```
+**Quick summary of patches:**
+1. Add `MAX_UNPACK_SIZE` validation in `util.py` to prevent memory errors
+2. Add `MAX_STRING_LENGTH` validation in string functions
+3. Skip `parse_mod` for non-USERPATCH15 versions
+4. Add `de_string(data)` in player loop for save >= 67
+5. Add `scenario_name` extraction from USER:SCENARIOS strings
+6. Add `settings_version = 4.7` for save >= 67
+7. Add `data.read(30)` before instructions for save >= 67
+8. Wrap trigger parsing in try/except
+9. Add scenario/lobby fallback in main `parse()` function
 
-**Note:** Do NOT install mgz from git (`pip install git+https://github.com/happyleavesaoc/aoc-mgz.git`) - the git version breaks parsing for all current replays due to unrelated regressions.
+**See [CLAUDE.md](CLAUDE.md) for complete patch details with code snippets.**
+
+These patches fix:
+- Buffer allocation errors on corrupted files
+- Parse failures on save version 67.x replays
+- Custom scenario map name extraction
 
 ## Usage
 
@@ -111,9 +122,8 @@ aoe2/
 
 ## Known Limitations
 
-- ~12% of replays with save version 67.2 fail in `parse_scenario` (edge cases without a fix yet)
-- Some replays with corrupt/truncated headers cannot be parsed
 - Replay timestamps are in real-time; the tool converts to game time using the speed multiplier
+- Some severely corrupted replay files may still fail to parse (rare)
 
 ## Dependencies
 
