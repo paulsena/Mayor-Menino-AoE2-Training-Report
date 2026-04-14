@@ -443,6 +443,7 @@ def compute_trend_stats(all_game_stats):
     for name in sorted(player_names):
         player_trend = {
             "games": [],
+            "game_ids": [],  # Unique game filename for alignment
             "feudal_times": [],
             "castle_times": [],
             "imperial_times": [],
@@ -455,6 +456,7 @@ def compute_trend_stats(all_game_stats):
             "first_military": [],
             "total_military": [],
             "game_durations": [],
+            "game_dates_display": [],
             "wins": [],
             "final_resources": [],
             "final_objects": [],
@@ -469,7 +471,11 @@ def compute_trend_stats(all_game_stats):
                     continue
                 stats = p["stats"]
                 game_date = gs["metadata"].get("game_date", "unknown")
+                game_date_display = gs["metadata"].get("game_date_display", game_date)
+                game_id = gs["metadata"].get("filename", "")
                 player_trend["games"].append(game_date)
+                player_trend["game_ids"].append(game_id)
+                player_trend["game_dates_display"].append(game_date_display)
                 player_trend["game_durations"].append(gs["metadata"]["duration_minutes"])
 
                 ft = stats["age_ups"]["feudal"]["time_s"]

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Brooks St. AoE2 Training Report</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
 <style>
 :root {
   --bg-primary: #0f1419;
@@ -1065,10 +1066,34 @@ function renderTrends() {
 
   // Charts grouped by category
   // Age-up times charts are defined separately above (feudal-trend, castle-trend, imperial-trend)
+  // Benchmark thresholds in minutes for colored bands
+  const ageBenchmarks = {
+    feudal: [
+      { max: 10 + 10/60, color: '#22c55e', label: 'Excellent' },
+      { max: 11 + 10/60, color: '#84cc16', label: 'Great' },
+      { max: 12 + 10/60, color: '#eab308', label: 'Good' },
+      { max: 14 + 10/60, color: '#f97316', label: 'Average' },
+      { max: 20, color: '#ef4444', label: 'Needs Work' },
+    ],
+    castle: [
+      { max: 18 + 40/60, color: '#22c55e', label: 'Excellent' },
+      { max: 20 + 40/60, color: '#84cc16', label: 'Great' },
+      { max: 23 + 40/60, color: '#eab308', label: 'Good' },
+      { max: 27 + 40/60, color: '#f97316', label: 'Average' },
+      { max: 35, color: '#ef4444', label: 'Needs Work' },
+    ],
+    imperial: [
+      { max: 33 + 10/60, color: '#22c55e', label: 'Excellent' },
+      { max: 38 + 10/60, color: '#84cc16', label: 'Great' },
+      { max: 43 + 10/60, color: '#eab308', label: 'Good' },
+      { max: 53 + 10/60, color: '#f97316', label: 'Average' },
+      { max: 65, color: '#ef4444', label: 'Needs Work' },
+    ],
+  };
   const ageTimesCharts = [
-    { id: 'feudal-trend', key: 'feudal_times', isTime: true },
-    { id: 'castle-trend', key: 'castle_times', isTime: true },
-    { id: 'imperial-trend', key: 'imperial_times', isTime: true },
+    { id: 'feudal-trend', key: 'feudal_times', isTime: true, benchmarks: ageBenchmarks.feudal },
+    { id: 'castle-trend', key: 'castle_times', isTime: true, benchmarks: ageBenchmarks.castle },
+    { id: 'imperial-trend', key: 'imperial_times', isTime: true, benchmarks: ageBenchmarks.imperial },
   ];
 
   const chartGroups = [
@@ -1133,18 +1158,60 @@ function renderTrends() {
 
   container.innerHTML = html;
 
-  // Build date lookup: sort_date → display_date from GAME_DATA
-  const dateLookup = {};
-  GAME_DATA.forEach(g => {
-    const sd = g.metadata.game_date;
-    const dd = g.metadata.game_date_display;
-    if (sd && dd) dateLookup[sd] = dd;
-  });
+  // Build master game list from GAME_DATA (sorted chronologically)
+  // Each entry: { id: filename, date: display_date, index: position }
+  const masterGameList = GAME_DATA.map((g, idx) => ({
+    id: g.metadata.filename,
+    date: g.metadata.game_date_display,
+    index: idx
+  }));
 
-  // Find the longest game list across filtered players for x-axis labels
-  let maxGames = 0;
-  players.forEach(name => { maxGames = Math.max(maxGames, TREND_DATA[name].games.length); });
-  const xLabels = Array.from({length: maxGames}, (_, i) => `Game ${i+1}`);
+  // Build lookup: game_id -> master index
+  const gameIdToIndex = {};
+  masterGameList.forEach((g, i) => { gameIdToIndex[g.id] = i; });
+
+  // X-axis labels from master game list
+  const xLabels = masterGameList.map((g, i) => `Game ${i + 1}`);
+
+  // For each player, build aligned data arrays
+  // alignedTrends[playerName][key] = array aligned to master game list
+  const alignedTrends = {};
+  players.forEach(name => {
+    const t = TREND_DATA[name];
+    if (!t) return;
+    alignedTrends[name] = {};
+
+    // Build lookup: game_id -> player's index in their arrays
+    const playerGameIds = t.game_ids || [];
+    const playerIdxLookup = {};
+    playerGameIds.forEach((gid, i) => { playerIdxLookup[gid] = i; });
+
+    // For each data key, create aligned array
+    const keys = ['feudal_times', 'castle_times', 'imperial_times', 'villagers_at_15min',
+                  'villagers_at_30min', 'villagers_at_castle', 'total_villagers', 'apm',
+                  'idle_tc_early', 'first_military', 'total_military', 'game_durations', 'wins'];
+    keys.forEach(key => {
+      if (!t[key]) return;
+      const aligned = new Array(masterGameList.length).fill(null);
+      masterGameList.forEach((g, masterIdx) => {
+        const playerIdx = playerIdxLookup[g.id];
+        if (playerIdx !== undefined && t[key][playerIdx] !== undefined) {
+          aligned[masterIdx] = t[key][playerIdx];
+        }
+      });
+      alignedTrends[name][key] = aligned;
+    });
+
+    // Also align game_dates_display for tooltips
+    const alignedDates = new Array(masterGameList.length).fill(null);
+    masterGameList.forEach((g, masterIdx) => {
+      const playerIdx = playerIdxLookup[g.id];
+      if (playerIdx !== undefined && t.game_dates_display && t.game_dates_display[playerIdx]) {
+        alignedDates[masterIdx] = t.game_dates_display[playerIdx];
+      }
+    });
+    alignedTrends[name].game_dates_display = alignedDates;
+  });
 
   // Render trend charts
   chartConfigs.forEach((cfg, ci) => {
@@ -1152,9 +1219,9 @@ function renderTrends() {
     if (!canvas) return;
     const datasets = [];
     players.forEach((name, pi) => {
-      const t = TREND_DATA[name];
-      if (!t[cfg.key]) return; // Skip if data not available
-      const data = t[cfg.key].map(v => {
+      const aligned = alignedTrends[name];
+      if (!aligned || !aligned[cfg.key]) return;
+      const data = aligned[cfg.key].map(v => {
         if (v == null) return null;
         if (cfg.isTime) return v / 60; // seconds → minutes
         return v;
@@ -1167,11 +1234,31 @@ function renderTrends() {
         tension: 0.3,
         pointRadius: 4,
         pointHoverRadius: 6,
-        spanGaps: true,
+        spanGaps: false,  // Don't connect across gaps - show breaks where player wasn't in game
       });
     });
 
-    const chart = new Chart(canvas, {
+    // Build annotation bands for age-up charts
+    var annotationConfig = {};
+    if (cfg.benchmarks) {
+      var annots = {};
+      var prevMax = 0;
+      for (var i = 0; i < cfg.benchmarks.length; i++) {
+        var b = cfg.benchmarks[i];
+        annots["band" + i] = {
+          type: "box",
+          yMin: prevMax,
+          yMax: b.max,
+          backgroundColor: b.color + "18",
+          borderWidth: 0,
+          drawTime: "beforeDatasetsDraw"
+        };
+        prevMax = b.max;
+      }
+      annotationConfig = { annotation: { annotations: annots } };
+    }
+
+    var chart = new Chart(canvas, {
       type: 'line',
       data: {
         labels: xLabels,
@@ -1186,17 +1273,15 @@ function renderTrends() {
             callbacks: {
               title: function(items) {
                 if (!items.length) return '';
-                const di = items[0].dataIndex;
+                const item = items[0];
+                const di = item.dataIndex;
+                const playerName = item.dataset.label;
+                // Game number is the master index + 1
                 const gameLabel = `Game ${di + 1}`;
-                // Try to find game date from first player's trend data
-                for (const name of players) {
-                  const gd = TREND_DATA[name].games[di];
-                  if (gd && dateLookup[gd]) return `${gameLabel} — ${dateLookup[gd]}`;
-                  if (gd) {
-                    // Format sort date on the fly: "2026.04.03" → "4/3"
-                    const parts = gd.split('.');
-                    if (parts.length === 3) return `${gameLabel} — ${parseInt(parts[1])}/${parseInt(parts[2])}`;
-                  }
+                // Get date from master game list
+                const masterGame = masterGameList[di];
+                if (masterGame && masterGame.date) {
+                  return `${gameLabel} — ${masterGame.date}`;
                 }
                 return gameLabel;
               },
@@ -1207,7 +1292,8 @@ function renderTrends() {
                 return `${ctx.dataset.label}: ${v}`;
               }
             }
-          }
+          },
+          ...annotationConfig,
         },
         scales: {
           x: { ticks: { font: { size: 10 } } },
