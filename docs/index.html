@@ -151,7 +151,7 @@ body {
 @media (max-width: 1200px) { .grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 768px) { .grid-3 { grid-template-columns: 1fr; } }
 
-/* Player columns layout — grid ensures cards align across players */
+/* Player columns layout â€” grid ensures cards align across players */
 .players-columns {
   display: grid;
   gap: 0.75rem;
@@ -958,9 +958,9 @@ function renderTrends() {
   // --- Age-Up Times Over Games Section (rendered early) ---
   // Benchmarks are for COMPLETION time (when you reach the age)
   const ageGradeLegend = `<div style="display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;font-size:0.8rem;color:var(--text-muted)">
-    <div><strong>Feudal:</strong> <span style="color:#22c55e">Excellent &lt;10:10</span> · <span style="color:#84cc16">Great &lt;11:10</span> · <span style="color:#eab308">Good &lt;12:10</span> · <span style="color:#f97316">Average &lt;14:10</span> · <span style="color:#ef4444">Needs Work 14:10+</span></div>
-    <div><strong>Castle:</strong> <span style="color:#22c55e">Excellent &lt;18:40</span> · <span style="color:#84cc16">Great &lt;20:40</span> · <span style="color:#eab308">Good &lt;23:40</span> · <span style="color:#f97316">Average &lt;27:40</span> · <span style="color:#ef4444">Needs Work 27:40+</span></div>
-    <div><strong>Imperial:</strong> <span style="color:#22c55e">Excellent &lt;33:10</span> · <span style="color:#84cc16">Great &lt;38:10</span> · <span style="color:#eab308">Good &lt;43:10</span> · <span style="color:#f97316">Average &lt;53:10</span> · <span style="color:#ef4444">Needs Work 53:10+</span></div>
+    <div><strong>Feudal:</strong> <span style="color:#22c55e">Excellent &lt;10:10</span> Â· <span style="color:#84cc16">Great &lt;11:10</span> Â· <span style="color:#eab308">Good &lt;12:10</span> Â· <span style="color:#f97316">Average &lt;14:10</span> Â· <span style="color:#ef4444">Needs Work 14:10+</span></div>
+    <div><strong>Castle:</strong> <span style="color:#22c55e">Excellent &lt;18:40</span> Â· <span style="color:#84cc16">Great &lt;20:40</span> Â· <span style="color:#eab308">Good &lt;23:40</span> Â· <span style="color:#f97316">Average &lt;27:40</span> Â· <span style="color:#ef4444">Needs Work 27:40+</span></div>
+    <div><strong>Imperial:</strong> <span style="color:#22c55e">Excellent &lt;33:10</span> Â· <span style="color:#84cc16">Great &lt;38:10</span> Â· <span style="color:#eab308">Good &lt;43:10</span> Â· <span style="color:#f97316">Average &lt;53:10</span> Â· <span style="color:#ef4444">Needs Work 53:10+</span></div>
   </div>`;
   html += `<div class="section" id="section-age-times">
     <div class="section-header" onclick="toggleSection('section-age-times')">
@@ -1247,7 +1247,7 @@ function renderTrends() {
       if (!aligned || !aligned[cfg.key]) return;
       const data = aligned[cfg.key].map(v => {
         if (v == null) return null;
-        if (cfg.isTime) return v / 60; // seconds → minutes
+        if (cfg.isTime) return v / 60; // seconds â†’ minutes
         return v;
       });
       datasets.push({
@@ -1305,7 +1305,7 @@ function renderTrends() {
                 // Get date from master game list
                 const masterGame = masterGameList[di];
                 if (masterGame && masterGame.date) {
-                  return `${gameLabel} — ${masterGame.date}`;
+                  return `${gameLabel} â€” ${masterGame.date}`;
                 }
                 return gameLabel;
               },
