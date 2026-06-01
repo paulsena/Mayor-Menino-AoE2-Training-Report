@@ -13,9 +13,8 @@ from dashboard import generate_dashboard
 # Cache file for incremental analysis
 CACHE_FILE = os.path.join("docs", "data", "cache.json")
 
-# Default AoE2 DE directory
-USERNAME = os.environ.get("USERNAME", os.environ.get("USER", "pauls"))
-AOE2_DE_DIR = os.path.join("C:\\Users", USERNAME, "Games", "Age of Empires 2 DE")
+# Default AoE2 DE directory (WSL path to Windows Games folder)
+AOE2_DE_DIR = "/mnt/c/Users/pauls/Games/Age of Empires 2 DE"
 
 
 def find_default_savegame_dir():
