@@ -202,6 +202,22 @@ In the main `parse` function, wrap scenario/lobby parsing with fallback:
             )
 ```
 
+### Patch 8: mgz/fast/header.py - parse_de extra bytes for save 67+
+
+In `parse_de`, save 67 added an extra 8-byte field (timestamp + padding) at the end of the `not skip` block. Without this read, `parse_metadata` starts at the wrong position, reads a Unix timestamp as the `ai` field, and the 4096-null-byte heuristic seeks to the wrong place — resulting in `num_players=0` and a crash in `parse_players`.
+
+In the `if not skip:` block (around line 578), after `timestamp, x = unpack('<II', data)`:
+
+```python
+    if not skip:
+        de_string(data)
+        data.read(8)
+        if save >= 37:
+            timestamp, x = unpack('<II', data)
+        if save >= 67:
+            data.read(8)  # extra timestamp+padding added in save 67
+```
+
 ## Incremental Analysis
 
 The analyzer caches parsed results in `docs/data/cache.json` (keyed by filename + mtime). On normal runs, only new or modified replay files are parsed.
