@@ -6,7 +6,8 @@
       "WebFetch(domain:github.com)",
       "Bash(ls /c/Users/pauls/Documents/Coding/aoe2/*.aoe2record)",
       "Bash(python:*)",
-      "Bash(gh api:*)"
+      "Bash(gh api:*)",
+      "Bash(venv/bin/python *)"
     ]
   }
 }
